@@ -216,18 +216,49 @@ enum OfficeFiles {
         try archive(url, entries: entries)
     }
     private static func archive(_ url: URL, entries: [String: String]) throws {
-        let temporary = url.deletingLastPathComponent().appendingPathComponent(".\(UUID().uuidString).tmp")
+        let temporary = FileManager.default.temporaryDirectory.appendingPathComponent("Arbeitsraum-\(UUID().uuidString).tmp")
         defer { try? FileManager.default.removeItem(at: temporary) }
         let zip = try Archive(url: temporary, accessMode: .create)
         for (path, text) in entries {
             let data = Data(("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" + text).utf8)
             try zip.addEntry(with: path, type: .file, uncompressedSize: Int64(data.count), compressionMethod: .deflate) { position, size in data.subdata(in: Int(position)..<Int(position) + size) }
         }
-        if FileManager.default.fileExists(atPath: url.path) { _ = try FileManager.default.replaceItemAt(url, withItemAt: temporary) }
-        else { try FileManager.default.moveItem(at: temporary, to: url) }
+        try ExportFileWriter.coordinateWrite(to: url) { coordinatedURL in
+            if FileManager.default.fileExists(atPath: coordinatedURL.path) {
+                _ = try FileManager.default.replaceItemAt(coordinatedURL, withItemAt: temporary)
+            } else {
+                try FileManager.default.moveItem(at: temporary, to: coordinatedURL)
+            }
+        }
     }
     private static func escape(_ text: String) -> String {
         String(text.unicodeScalars.filter { $0.value >= 32 || [9, 10, 13].contains($0.value) }).replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;").replacingOccurrences(of: ">", with: "&gt;").replacingOccurrences(of: "\"", with: "&quot;").replacingOccurrences(of: "'", with: "&apos;")
+    }
+}
+
+enum ExportFileWriter {
+    static func write(_ data: Data, to url: URL) throws {
+        try coordinateWrite(to: url) { coordinatedURL in
+            // Avoid atomic Data.write here: its hidden sibling temp file is outside the
+            // file-specific sandbox grant returned by NSSavePanel.
+            try data.write(to: coordinatedURL)
+        }
+    }
+
+    static func coordinateWrite(to url: URL, operation: (URL) throws -> Void) throws {
+        let startedAccess = url.startAccessingSecurityScopedResource()
+        defer { if startedAccess { url.stopAccessingSecurityScopedResource() } }
+
+        var coordinationError: NSError?
+        var operationError: Error?
+        var didCoordinate = false
+        NSFileCoordinator(filePresenter: nil).coordinate(writingItemAt: url, options: .forReplacing, error: &coordinationError) { coordinatedURL in
+            didCoordinate = true
+            do { try operation(coordinatedURL) } catch { operationError = error }
+        }
+        if let operationError { throw operationError }
+        if let coordinationError { throw coordinationError }
+        guard didCoordinate else { throw CocoaError(.fileWriteUnknown) }
     }
 }
 

@@ -218,6 +218,8 @@ struct WorkspaceEditor: View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 Image(systemName: "folder").foregroundStyle(.secondary)
+                Text("Arbeitsbereich").font(.system(size: 12)).foregroundStyle(.secondary)
+                Text("·").foregroundStyle(.tertiary)
                 TextField("Projektname", text: $project.title).font(.system(size: 14, weight: .medium)).textFieldStyle(.plain)
                 Spacer(minLength: 6)
                 Button { showingAudio = true } label: { Label("Audio", systemImage: "waveform") }
@@ -312,11 +314,14 @@ struct WorkspaceEditor: View {
             switch ext {
             case "docx": try OfficeFiles.writeDOCX(activeFile, to: url)
             case "xlsx": try OfficeFiles.writeXLSX(project.allFiles.filter { $0.kind == .table }, to: url)
-            case "rtf": try DocumentContent.encode(DocumentContent.attributed(text: activeFile.text, rtf: activeFile.rtf))?.write(to: url, options: .atomic)
+            case "rtf":
+                if let data = DocumentContent.encode(DocumentContent.attributed(text: activeFile.text, rtf: activeFile.rtf)) {
+                    try ExportFileWriter.write(data, to: url)
+                }
             case "csv":
                 let csv = activeFile.rows.map { $0.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }.joined(separator: ",") }.joined(separator: "\n")
-                try csv.write(to: url, atomically: true, encoding: .utf8)
-            default: try activeFile.text.write(to: url, atomically: true, encoding: .utf8)
+                try ExportFileWriter.write(Data(csv.utf8), to: url)
+            default: try ExportFileWriter.write(Data(activeFile.text.utf8), to: url)
             }
         } catch { store.report(error: "Export fehlgeschlagen: \(error.localizedDescription)") }
     }

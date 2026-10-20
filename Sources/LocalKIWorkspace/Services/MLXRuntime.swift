@@ -6,7 +6,9 @@ import Tokenizers
 
 /// Inference owns no downloader or HTTP client. Only a completed local snapshot can be loaded.
 actor MLXRuntime {
+    static let maxInputTokens = 6_000
     private var container: ModelContainer?
+    private var lastInputTokenCount: Int?
 
     func load(directory: URL) async throws {
         container = nil
@@ -17,13 +19,17 @@ actor MLXRuntime {
 
     func unload() {
         container = nil
+        lastInputTokenCount = nil
         MLX.Memory.clearCache()
     }
+
+    func measuredInputTokens() -> Int? { lastInputTokenCount }
 
     func response(systemPrompt: String, userText: String, history: [WorkspaceMessage] = []) async throws -> AsyncThrowingStream<Generation, Error> {
         guard let container else { throw ModelLibraryError.message("Es ist kein MLX-Modell geladen.") }
         let tokens = await container.encode(systemPrompt + "\n" + history.map(\.text).joined(separator: "\n") + "\n" + userText)
-        guard tokens.count <= 6_000 else {
+        lastInputTokenCount = tokens.count
+        guard tokens.count <= Self.maxInputTokens else {
             throw ModelLibraryError.message("Der Text ist für den begrenzten Kontext dieser Version zu lang (\(tokens.count) Eingabetokens, maximal 6.000). Bitte mit einem kürzeren Abschnitt arbeiten.")
         }
         // Each request gets a fresh session: no patient or project context is carried into the next request.

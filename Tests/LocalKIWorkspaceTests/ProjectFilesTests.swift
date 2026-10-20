@@ -82,6 +82,16 @@ final class ProjectFilesTests: XCTestCase {
         XCTAssertEqual(try OfficeFiles.delimited("A,B\r\n\"a,b\",\"line1\nline2\"\r\n", separator: ","), [["A", "B"], ["a,b", "line1\nline2"]])
         XCTAssertThrowsError(try OfficeFiles.delimited("\"offen", separator: ","))
     }
+    func testExportFileWriterWritesAndReplacesSelectedOutput() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let output = root.appendingPathComponent("bericht.txt")
+        try ExportFileWriter.write(Data("erste Fassung".utf8), to: output)
+        XCTAssertEqual(try String(contentsOf: output, encoding: .utf8), "erste Fassung")
+        try ExportFileWriter.write(Data("zweite Fassung".utf8), to: output)
+        XCTAssertEqual(try String(contentsOf: output, encoding: .utf8), "zweite Fassung")
+    }
     @MainActor
     func testOfflineModeDefaultsToBlockingDownloads() {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

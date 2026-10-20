@@ -73,10 +73,13 @@ struct SpreadsheetEditor: View {
                     .disabled(selected == nil).accessibilityLabel("Zellinhalt")
                 Spacer(minLength: 8)
                 Button { project.tableRows.append(Array(repeating: "", count: columns)) } label: { Label("Zeile", systemImage: "plus") }
+                    .help("Zeile hinzufügen")
+                Button {
+                    for index in project.tableRows.indices { project.tableRows[index].append("") }
+                    if project.tableRows.isEmpty { project.tableRows = [[""]] }
+                } label: { Label("Spalte", systemImage: "plus") }
+                    .help("Spalte hinzufügen")
                 Menu {
-                    Button("Spalte hinzufügen") {
-                        for index in project.tableRows.indices { project.tableRows[index].append("") }
-                    }
                     if let selected {
                         Button("Ausgewählte Zeile entfernen", role: .destructive) {
                             guard selected.row > 0, project.tableRows.indices.contains(selected.row) else { return }

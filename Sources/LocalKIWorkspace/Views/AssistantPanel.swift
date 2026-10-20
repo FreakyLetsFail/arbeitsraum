@@ -17,6 +17,7 @@ struct AssistantPanel: View {
     @State private var showingImport = false
     @State private var importing = false
     @State private var memoryDraft: String?
+    @State private var exactContextTokens: Int?
 
     @State private var editingMessageID: UUID?
     private let engine = LoopbackOpenAIEngine()
@@ -70,6 +71,11 @@ struct AssistantPanel: View {
         }
         .background(Color(nsColor: .controlBackgroundColor))
         .onAppear { messages = project.chatMessages ?? [] }
+        .onChange(of: question) { _, _ in exactContextTokens = nil }
+        .onChange(of: includeDocument) { _, _ in exactContextTokens = nil }
+        .onChange(of: attachments) { _, _ in exactContextTokens = nil }
+        .onChange(of: messages.count) { _, _ in exactContextTokens = nil }
+        .onChange(of: store.settings.selectedMLXModelID) { _, _ in exactContextTokens = nil }
         .onDisappear { generationTask?.cancel() }
         .sheet(isPresented: $showingModels) { WorkspaceSettingsView(store: store) }
         .fileImporter(isPresented: $showingImport, allowedContentTypes: WorkspaceImportTypes.all, allowsMultipleSelection: true) { result in
@@ -130,6 +136,15 @@ struct AssistantPanel: View {
                         }
                     } label: { Image(systemName: "paperclip") }.menuStyle(.borderlessButton).fixedSize().accessibilityLabel("Dateien an Chat anhängen").disabled(isGenerating || importing)
                     if importing { ProgressView().controlSize(.small) }
+                    if store.settings.runtime == .mlx {
+                        ContextUsageIndicator(tokens: exactContextTokens ?? estimatedContextTokens,
+                                              isExact: exactContextTokens != nil)
+                    } else {
+                        Image(systemName: "circle.dashed")
+                            .font(.system(size: 13)).foregroundStyle(.tertiary)
+                            .help("Das Kontextlimit dieses lokalen Servers wird nicht gemeldet.")
+                            .accessibilityLabel("Kontextauslastung nicht verfügbar")
+                    }
                     Menu {
                         ForEach(library.installedCatalog) { model in
                             Button(model.title) {
@@ -160,6 +175,10 @@ struct AssistantPanel: View {
                 Spacer()
                 Text("Enter ↵ · neue Zeile ⇧↵").help("Das Modell kann Fehler machen. Inhalte werden nur auf Wunsch eingefügt.")
             }.font(.system(size: 10)).foregroundStyle(.tertiary)
+            if tableContextIncluded {
+                Text("Der Chat kann Tabellenwerte vorschlagen, aber noch nicht selbst in Zellen ändern.")
+                    .font(.system(size: 10)).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+            }
         }.padding(14)
     }
     private func suggestion(_ title: String, prompt: String) -> some View {
@@ -183,6 +202,10 @@ struct AssistantPanel: View {
             VStack(alignment: .leading, spacing: 10) {
                 if message.text.isEmpty && isGenerating { ProgressView().controlSize(.small).accessibilityLabel("Antwort wird vorbereitet") }
                 else if !message.text.isEmpty { Text(message.text).font(.system(size: 13)).lineSpacing(4).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
+                if message.contextTrimmed == true {
+                    Label("Ältere Chatbeiträge wurden für diese Anfrage gekürzt. Der vollständige Chat bleibt gespeichert.", systemImage: "arrow.down.right.and.arrow.up.left")
+                        .font(.system(size: 10)).foregroundStyle(.secondary)
+                }
                 if !isGenerating {
                     if message.status == .incomplete {
                         Text("Unvollständig").font(.system(size: 10)).foregroundStyle(.secondary)
@@ -220,8 +243,23 @@ struct AssistantPanel: View {
         }
     }
     private func persist() { project.chatMessages = messages }
+    private var estimatedContextTokens: Int {
+        let selected = attachments.intersection(Set(project.allFiles.map(\.id)))
+        let sources = ProjectKnowledge.sources(project: project, question: question, includeProject: includeDocument, attachments: selected)
+        var instructions = ProjectKnowledge.instructions(project: project, sources: sources)
+        if tableContextIncluded {
+            instructions += "\n\nDu kannst Tabellenzellen in dieser App nicht bearbeiten. Behaupte niemals, Zeilen, Spalten oder Zellwerte verändert zu haben. Kennzeichne Tabelleninhalte als Vorschläge."
+        }
+        let history = messages.filter { $0.status == .complete }.suffix(6).map { String($0.text.prefix(1_500)) }
+        let characters = instructions.unicodeScalars.count + history.reduce(0) { $0 + $1.unicodeScalars.count } + question.unicodeScalars.count
+        return Int((Double(characters) / 3.6).rounded(.up))
+    }
+    private var tableContextIncluded: Bool {
+        project.allFiles.contains { $0.kind == .table && (includeDocument || attachments.contains($0.id)) }
+    }
     private func send() {
         guard !isGenerating, !library.isBusy, !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        exactContextTokens = nil
         generationTask = Task { await generate() }
     }
     @MainActor private func generate() async {
@@ -230,8 +268,12 @@ struct AssistantPanel: View {
             var shortened = message; shortened.text = String(message.text.prefix(1_500)); return shortened
         }
         let selected = attachments.intersection(Set(project.allFiles.map(\.id)))
+        let hasTableContext = project.allFiles.contains { $0.kind == .table && (includeDocument || selected.contains($0.id)) }
         let sources = ProjectKnowledge.sources(project: project, question: clean, includeProject: includeDocument, attachments: selected)
-        let instructions = ProjectKnowledge.instructions(project: project, sources: sources)
+        var instructions = ProjectKnowledge.instructions(project: project, sources: sources)
+        if hasTableContext {
+            instructions += "\n\nDu kannst Tabellenzellen in dieser App nicht bearbeiten. Behaupte niemals, Zeilen, Spalten oder Zellwerte verändert zu haben. Kennzeichne Tabelleninhalte als Vorschläge."
+        }
         messages.append(.init(role: .user, text: clean, attachmentIDs: Array(selected)))
         let response = WorkspaceMessage(role: .assistant, text: "", status: .incomplete, sources: sources)
         messages.append(response); persist()
@@ -240,8 +282,21 @@ struct AssistantPanel: View {
         do {
             let result: String
             if store.settings.runtime == .mlx {
-                result = try await library.generate(modelID: store.settings.selectedMLXModelID, systemPrompt: instructions, userText: clean, history: history) { chunk in
-                    if let index = messages.firstIndex(where: { $0.id == response.id }) { messages[index].text += chunk }
+                do {
+                    result = try await generateLocally(instructions: instructions, userText: clean, history: history, responseID: response.id)
+                } catch {
+                    guard error.localizedDescription.contains("maximal 6.000"),
+                          let index = messages.firstIndex(where: { $0.id == response.id }), messages[index].text.isEmpty else { throw error }
+                    // Only shrink the request sent to the model. The persisted chat and project files remain intact.
+                    let shorterHistory = Array(history.suffix(2))
+                    let shorterSources = ProjectKnowledge.sources(project: project, question: clean, includeProject: includeDocument, attachments: selected, budget: 3_000)
+                    var shorterInstructions = ProjectKnowledge.instructions(project: project, sources: shorterSources)
+                    if hasTableContext {
+                        shorterInstructions += "\n\nDu kannst Tabellenzellen in dieser App nicht bearbeiten. Behaupte niemals, Zeilen, Spalten oder Zellwerte verändert zu haben. Kennzeichne Tabelleninhalte als Vorschläge."
+                    }
+                    messages[index].sources = shorterSources
+                    messages[index].contextTrimmed = true
+                    result = try await generateLocally(instructions: shorterInstructions, userText: clean, history: shorterHistory, responseID: response.id)
                 }
             } else {
                 guard !store.settings.offlineMode else { throw ModelLibraryError.message("Offline-Modus aktiv. Verwende ein installiertes MLX-Modell direkt in der App.") }
@@ -250,6 +305,34 @@ struct AssistantPanel: View {
             try Task.checkCancellation()
             if let index = messages.firstIndex(where: { $0.id == response.id }) { messages[index].text = result; messages[index].status = .complete }
         } catch { errorMessage = Task.isCancelled ? "Antwort abgebrochen." : error.localizedDescription }
+    }
+
+    @MainActor private func generateLocally(instructions: String, userText: String, history: [WorkspaceMessage], responseID: UUID) async throws -> String {
+        try await library.generate(modelID: store.settings.selectedMLXModelID, systemPrompt: instructions, userText: userText, history: history, onContextTokens: { count in
+            exactContextTokens = count
+        }) { chunk in
+            if let index = messages.firstIndex(where: { $0.id == responseID }) { messages[index].text += chunk }
+        }
+    }
+}
+
+private struct ContextUsageIndicator: View {
+    let tokens: Int
+    let isExact: Bool
+    private var limit: Int { MLXRuntime.maxInputTokens }
+    private var fraction: Double { min(1, max(0, Double(tokens) / Double(limit))) }
+    private var color: Color { fraction >= 0.9 ? .orange : .accentColor }
+    var body: some View {
+        ZStack {
+            Circle().stroke(.primary.opacity(0.14), lineWidth: 2.5)
+            Circle().trim(from: 0, to: fraction).stroke(color, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            Text("\(Int((fraction * 100).rounded()))").font(.system(size: 7, weight: .semibold, design: .rounded))
+        }
+        .frame(width: 22, height: 22)
+        .help("\(isExact ? "Gemessen" : "Geschätzt"): \(tokens) von \(limit) Eingabetokens (\(Int((fraction * 100).rounded())) %). Bei zu großem Kontext kürzt die App ältere Chatbeiträge und Quellenauszüge für diese Anfrage; Chat und Originaldateien bleiben gespeichert.")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Kontext \(isExact ? "gemessen" : "geschätzt") \(Int((fraction * 100).rounded())) Prozent von \(limit) Eingabetokens")
     }
 }
 

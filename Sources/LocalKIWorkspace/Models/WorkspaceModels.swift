@@ -47,6 +47,7 @@ struct WorkspaceMessage: Codable, Identifiable, Hashable, Sendable {
     var createdAt = Date()
     var attachmentIDs: [UUID]?
     var sources: [WorkspaceSource]?
+    var contextTrimmed: Bool?
 }
 
 struct WorkspaceTemplate: Codable, Identifiable, Hashable {

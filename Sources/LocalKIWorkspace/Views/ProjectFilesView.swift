@@ -38,11 +38,15 @@ struct ReferenceFileView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             if let note = file.importNote { Label(note, systemImage: "info.circle").font(.callout).foregroundStyle(.secondary) }
-            if let url, url.pathExtension.lowercased() == "pdf" { LocalPDFView(url: url) }
+            if let url, url.pathExtension.lowercased() == "pdf" { LocalPDFView(url: url).frame(maxWidth: .infinity, maxHeight: .infinity) }
             else if let url, ["png", "jpg", "jpeg"].contains(url.pathExtension.lowercased()), let image = NSImage(contentsOf: url) {
                 Image(nsImage: image).resizable().scaledToFit().frame(maxHeight: 250)
             }
-            ScrollView { Text(file.text.isEmpty ? "Kein auslesbarer Text für den Chat vorhanden." : file.text).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
+            if let url, ["pdf", "png", "jpg", "jpeg"].contains(url.pathExtension.lowercased()) {
+                Spacer(minLength: 0)
+            } else {
+                ScrollView { Text(file.text.isEmpty ? "Kein auslesbarer Text für den Chat vorhanden." : file.text).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
+            }
         }.padding(24).frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

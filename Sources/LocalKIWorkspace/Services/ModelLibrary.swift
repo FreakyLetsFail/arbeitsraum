@@ -6,6 +6,7 @@ import MLXLMCommon
 final class ModelLibrary: ObservableObject {
     @Published private(set) var installed: [String: InstalledModel] = [:]
     @Published private(set) var activeModelID: String?
+    @Published private(set) var lastInputTokenCount: Int?
     @Published private(set) var isLoading = false
     @Published private(set) var isGenerating = false
     @Published private(set) var downloadingID: String?
@@ -122,7 +123,7 @@ final class ModelLibrary: ObservableObject {
         } catch { errorMessage = "Das Modell konnte nicht in den Papierkorb verschoben werden: \(error.localizedDescription)" }
     }
 
-    func generate(modelID: String, systemPrompt: String, userText: String, history: [WorkspaceMessage] = [], onChunk: @MainActor (String) -> Void) async throws -> String {
+    func generate(modelID: String, systemPrompt: String, userText: String, history: [WorkspaceMessage] = [], onContextTokens: @MainActor (Int) -> Void = { _ in }, onChunk: @MainActor (String) -> Void) async throws -> String {
         guard !isBusy else { throw ModelLibraryError.message("Es läuft bereits eine Modellaktion.") }
         guard let model = CatalogModel.model(id: modelID) else { throw ModelLibraryError.message("Bitte ein Modell aus der Modellbibliothek auswählen.") }
         if activeModelID != modelID { try await load(model) }
@@ -132,7 +133,20 @@ final class ModelLibrary: ObservableObject {
             isGenerating = false
             status = "\(model.title) · bereit · lokal in der App"
         }
-        let stream = try await runtime.response(systemPrompt: systemPrompt, userText: userText, history: history)
+        let stream: AsyncThrowingStream<Generation, Error>
+        do {
+            stream = try await runtime.response(systemPrompt: systemPrompt, userText: userText, history: history)
+        } catch {
+            if let count = await runtime.measuredInputTokens() {
+                lastInputTokenCount = count
+                onContextTokens(count)
+            }
+            throw error
+        }
+        if let count = await runtime.measuredInputTokens() {
+            lastInputTokenCount = count
+            onContextTokens(count)
+        }
         var answer = ""
         var completed = false
         for try await event in stream {
