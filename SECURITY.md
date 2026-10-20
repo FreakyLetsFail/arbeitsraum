@@ -1,7 +1,7 @@
-# Sicherheit melden
+# Sicherheitsprobleme melden
 
-Bitte melde vermutete Sicherheitslücken nicht als öffentliches Issue. Wenn GitHub für dieses Repository private Vulnerability Reports anbietet, nutze bitte diesen privaten Meldeweg.
+Sicherheitslücken bitte über [GitHub Private Vulnerability Reporting](https://github.com/FreakyLetsFail/arbeitsraum/security/advisories/new) vertraulich melden. Diese Funktion ist für dieses Repository aktiviert. Für normale Fehler und Funktionswünsche stehen die öffentlichen Issue-Formulare bereit.
 
-Falls diese Funktion nicht verfügbar ist, prüfe die Repository-Informationen auf einen vom Projekt gepflegten privaten Kontaktweg. Es wird hier keine separate Sicherheitsadresse zugesagt.
+Bitte auch privat keine Patienten-, Schüler-, Klienten-, Zugangs- oder sonstigen vertraulichen Daten übertragen. Schritte zur Reproduktion mit synthetischen Beispieldaten genügen. Die App hängt keine Protokolle oder Dateien automatisch an.
 
-Füge niemals Patienten-, Schüler- oder Kundendaten, echte Dokumente, Zugangsdaten oder andere vertrauliche Inhalte bei. Arbeitsraum ist auf lokale Offline-Nutzung ausgelegt; das Einreichen einer privaten Meldung über GitHub benötigt eine Internetverbindung.
+Offline-Verarbeitung ersetzt kein Sicherheitskonzept für Gerät, Benutzerkonto, Backups oder Aufbewahrung. Aktuell gibt es keine zusätzliche anwendungsseitige Verschlüsselung und keine bestätigte medizinische oder datenschutzrechtliche Zertifizierung.

@@ -51,6 +51,8 @@ final class ProjectFilesTests: XCTestCase {
         let file = WorkspaceFile(name: "Test", kind: .document, text: rich.string, rtf: DocumentContent.encode(rich))
         let url = root.appendingPathComponent("test.docx")
         try OfficeFiles.writeDOCX(file, to: url)
+        let attachment = XCTAttachment(data: try Data(contentsOf: url), uniformTypeIdentifier: "org.openxmlformats.wordprocessingml.document")
+        attachment.name = "synthetic-export.docx"; attachment.lifetime = .keepAlways; add(attachment)
         let imported = try XCTUnwrap(OfficeFiles.read(url, originalName: "test.docx").first)
         XCTAssertEqual(imported.text.trimmingCharacters(in: .newlines), rich.string)
         let decoded = DocumentContent.attributed(text: imported.text, rtf: imported.rtf)
@@ -67,6 +69,8 @@ final class ProjectFilesTests: XCTestCase {
         let files: [WorkspaceFile] = [.init(name: "Blatt/1", kind: .table, rows: [["Fach", "Punkte"], ["Mathe & Sprache", "12"], ["Summe", "=SUM(B2:B2)"]]), .init(name: "Blatt 2", kind: .table, rows: [["Text", "0012"]])]
         let url = root.appendingPathComponent("test.xlsx")
         try OfficeFiles.writeXLSX(files, to: url)
+        let attachment = XCTAttachment(data: try Data(contentsOf: url), uniformTypeIdentifier: "org.openxmlformats.spreadsheetml.sheet")
+        attachment.name = "synthetic-export.xlsx"; attachment.lifetime = .keepAlways; add(attachment)
         let imported = try OfficeFiles.read(url, originalName: "test.xlsx")
         XCTAssertEqual(imported.count, 2)
         XCTAssertEqual(imported[0].rows, files[0].rows)

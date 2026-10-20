@@ -102,7 +102,7 @@ struct TemplateLibraryView: View {
             Picker("Vorlagentyp", selection: $kindFilter) {
                 ForEach(KindFilter.allCases) { filter in Text(filter.title).tag(filter) }
             }
-            .pickerStyle(.segmented)
+            .pickerStyle(.segmented).labelsHidden()
 
             if filteredTemplates.isEmpty {
                 ContentUnavailableView(
@@ -181,7 +181,7 @@ struct TemplateLibraryView: View {
                 Picker("Bereich", selection: $editorSection) {
                     ForEach(EditorSection.allCases) { section in Text(section.title).tag(section) }
                 }
-                .pickerStyle(.segmented)
+                .pickerStyle(.segmented).labelsHidden()
                 .frame(maxWidth: 360)
                 .padding(.vertical, 14)
                 Divider()

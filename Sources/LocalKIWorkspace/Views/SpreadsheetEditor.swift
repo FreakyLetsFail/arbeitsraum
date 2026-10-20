@@ -213,7 +213,18 @@ private struct NativeSpreadsheet: NSViewRepresentable {
             guard let table, table.clickedRow >= 0, table.clickedColumn > 0 else { return }
             let cell = SheetCell(row: table.clickedRow, column: table.clickedColumn - 1)
             parent.selected = cell
-            table.editColumn(table.clickedColumn, row: table.clickedRow, with: nil, select: true)
+            editCell(cell)
+        }
+        private func editCell(_ cell: SheetCell) {
+            guard let table, cell.row >= 0, cell.row < snapshot.count, cell.column >= 0 else { return }
+            let tableColumn = cell.column + 1
+            table.scrollRowToVisible(cell.row)
+            table.scrollColumnToVisible(tableColumn)
+            let rawValue = snapshot[cell.row].indices.contains(cell.column) ? snapshot[cell.row][cell.column] : ""
+            if let cellView = table.view(atColumn: tableColumn, row: cell.row, makeIfNecessary: true) as? NSTableCellView {
+                cellView.textField?.stringValue = rawValue
+            }
+            table.editColumn(tableColumn, row: cell.row, with: nil, select: true)
         }
         func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
             let forward = commandSelector == #selector(NSResponder.insertTab(_:))
@@ -232,7 +243,7 @@ private struct NativeSpreadsheet: NSViewRepresentable {
             }
             parent.selected = next
             table.scrollRowToVisible(next.row); table.scrollColumnToVisible(next.column + 1)
-            DispatchQueue.main.async { table.editColumn(next.column + 1, row: next.row, with: nil, select: true) }
+            DispatchQueue.main.async { [weak self] in self?.editCell(next) }
             return true
         }
         func coordinate(_ notification: Notification) -> (NSTextField, SheetCell)? {
@@ -242,12 +253,12 @@ private struct NativeSpreadsheet: NSViewRepresentable {
             return (field, SheetCell(row: numbers[0], column: numbers[1]))
         }
         func controlTextDidBeginEditing(_ notification: Notification) {
-            guard let (field, cell) = coordinate(notification) else { return }
+            guard let (_, cell) = coordinate(notification) else { return }
             parent.selected = cell
-            if snapshot.indices.contains(cell.row), snapshot[cell.row].indices.contains(cell.column) {
-                let rawValue = snapshot[cell.row][cell.column]
-                field.stringValue = rawValue
-                field.currentEditor()?.string = rawValue
+        }
+        func controlTextDidEndEditing(_ notification: Notification) {
+            DispatchQueue.main.async { [weak self] in
+                self?.table?.reloadData()
             }
         }
         func controlTextDidChange(_ notification: Notification) {

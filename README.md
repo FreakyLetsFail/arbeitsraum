@@ -53,7 +53,7 @@ Falls Xcode nur einen Metal-Platzhalter enthält, den offiziellen Compiler unter
 
 Stand 20.10.2026, M2 / 16 GB / Xcode 27.1: **28 XCTest-Fälle erfolgreich**, einschließlich echter lokaler MLX-Inferenz mit synthetischen Projektquellen, Chatverlauf, Modellwechsel und Entladen. Weitere Tests decken Persistenz/Migration, Importkopien, Projektisolation, Quellenbudgets, DOCX- und XLSX-Roundtrips, CSV, Formeln/Fehlerfälle, begrenzte Referenzauswertung und gesperrte Downloads im Offline-Modus ab.
 
-Der Modelltest lädt niemals Gewichte nach und wird auf einem Mac ohne die beiden benötigten Installationen übersprungen. Audioaufnahme/Transkription wurde in dieser Erweiterung nicht mit echten Aufnahmen erneut geprüft. Es wurden keine Transkripte simuliert. Die neue Oberfläche konnte nach dem Build wegen eines macOS-Bildschirmaufnahmefehlers zunächst nicht vollständig manuell nachgeprüft werden.
+Der Modelltest lädt niemals Gewichte nach und wird auf einem Mac ohne die beiden benötigten Installationen übersprungen. Audioaufnahme/Transkription wurde in dieser Erweiterung nicht mit echten Aufnahmen erneut geprüft. Es wurden keine Transkripte simuliert. Manuell geprüft wurden die Rückkehr über „Alle Projekte“, mehrere Dateien pro Projekt, Dokumentformatierung, Gedächtnisnotiz, Enter/Shift+Enter, eine echte Antwort aus Dokument und Gedächtnis, Quellenanzeige, TSV-Einfügen, Formelbearbeitung mit Tab-Navigation, sofortige Aktualisierung abhängiger Zellwerte und die Vorlagenoberfläche. Projekte und zusätzliche Dateien blieben nach Neustart erhalten. Die Bedienverbindung und native Dateidialoge waren zeitweise durch macOS-Aufnahmefehler gestört; die Dialogprüfung war deshalb eingeschränkt. DOCX- und XLSX-Testexporte wurden zusätzlich mit unabhängigen Bibliotheken (python-docx und openpyxl) erfolgreich gelesen, einschließlich Fettformatierung, mehreren Blättern, Formeln und Text mit führenden Nullen.
 
 ## Speicherung und Grenzen
 
@@ -73,4 +73,4 @@ Dateirechte sind eingeschränkt. Es gibt **keine zusätzliche anwendungsseitige 
 
 ## Lizenz
 
-MIT für den App-Quellcode und das originale App-Symbol. Abhängigkeiten und Modellgewichte haben eigene Lizenzen; die MIT-Lizenz der App umfasst diese nicht.
+MIT für den App-Quellcode und das originale App-Symbol. [Abhängigkeiten](THIRD_PARTY_NOTICES.md) und Modellgewichte haben eigene Lizenzen; die MIT-Lizenz der App umfasst diese nicht.
