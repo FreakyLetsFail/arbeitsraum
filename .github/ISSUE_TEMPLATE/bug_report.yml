@@ -1,0 +1,41 @@
+name: Fehler melden
+description: Einen reproduzierbaren Fehler in Arbeitsraum melden.
+title: "[Fehler] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Bitte beschreibe den Fehler ohne vertrauliche Inhalte.
+        **Wichtig:** Keine Patienten-, Schüler- oder Kundendaten und keine echten Dokumente veröffentlichen. Hänge keine Logs oder Dateien an; sie werden nicht automatisch angefügt.
+        Das Senden eines GitHub-Feedbacks benötigt eine Internetverbindung. Arbeitsraum selbst ist für die lokale Offline-Nutzung gedacht.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Was ist passiert?
+      description: Beschreibe kurz das beobachtete Verhalten.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Schritte zur Reproduktion
+      description: Nutze ausschließlich erfundene oder vollständig anonymisierte Beispieldaten.
+      placeholder: "1. …\n2. …\n3. …"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Erwartetes Verhalten
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Arbeitsraum-Version
+      placeholder: "z. B. 1.0"
+  - type: input
+    id: macos
+    attributes:
+      label: macOS-Version

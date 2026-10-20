@@ -1,0 +1,28 @@
+name: Funktionsidee
+description: Eine neue Funktion für Arbeitsraum vorschlagen.
+title: "[Idee] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Teile deine Idee ohne vertrauliche Inhalte.
+        **Wichtig:** Keine Patienten-, Schüler- oder Kundendaten und keine echten Dokumente veröffentlichen. Hänge keine Logs oder Dateien an; sie werden nicht automatisch angefügt.
+        Das Senden eines GitHub-Feedbacks benötigt eine Internetverbindung. Arbeitsraum selbst ist für die lokale Offline-Nutzung gedacht.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Welches Problem soll gelöst werden?
+      description: Beschreibe den Anwendungsfall mit erfundenen oder anonymisierten Beispielen.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Was schlägst du vor?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Welche Alternativen hast du erwogen?

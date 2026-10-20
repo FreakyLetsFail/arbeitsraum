@@ -1,0 +1,24 @@
+name: Verbesserung
+description: Einen bestehenden Ablauf oder eine vorhandene Funktion verbessern.
+title: "[Verbesserung] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Teile deinen Vorschlag ohne vertrauliche Inhalte.
+        **Wichtig:** Keine Patienten-, Schüler- oder Kundendaten und keine echten Dokumente veröffentlichen. Hänge keine Logs oder Dateien an; sie werden nicht automatisch angefügt.
+        Das Senden eines GitHub-Feedbacks benötigt eine Internetverbindung. Arbeitsraum selbst ist für die lokale Offline-Nutzung gedacht.
+  - type: textarea
+    id: current
+    attributes:
+      label: Was sollte verbessert werden?
+      description: Beschreibe den aktuellen Ablauf mit erfundenen oder anonymisierten Beispielen.
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: Wie würde die Verbesserung helfen?
+    validations:
+      required: true

@@ -1,0 +1,25 @@
+.DS_Store
+.build/
+DerivedData/
+build/
+work/
+outputs/
+*.app/
+*.zip
+*.dmg
+*.xcresult/
+*.log
+*.xcuserstate
+xcuserdata/
+**/xcuserdata/
+LokalKIWorkspace 2.xcodeproj/
+.env
+.env.*
+*.pem
+*.key
+/Projects/
+/Audio/
+/Files/
+/Models/
+settings.json
+templates.json

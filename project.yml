@@ -1,0 +1,72 @@
+name: LokalKIWorkspace
+options:
+  bundleIdPrefix: de.justuswaechter
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    CODE_SIGN_IDENTITY: "-"
+    ARCHS: arm64
+packages:
+  ZIPFoundation:
+    url: https://github.com/weichsel/ZIPFoundation
+    exactVersion: 0.9.20
+  MLXSwiftLM:
+    url: https://github.com/ml-explore/mlx-swift-lm
+    exactVersion: 3.32.3
+  MLXSwift:
+    url: https://github.com/ml-explore/mlx-swift
+    exactVersion: 0.32.3
+  SwiftTransformers:
+    url: https://github.com/huggingface/swift-transformers
+    exactVersion: 1.3.5
+targets:
+  LokalKIWorkspace:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/LocalKIWorkspace
+      - path: Assets.xcassets
+    dependencies:
+      - package: ZIPFoundation
+      - package: MLXSwiftLM
+        product: MLXLLM
+      - package: MLXSwiftLM
+        product: MLXLMCommon
+      - package: MLXSwift
+        product: MLX
+      - package: SwiftTransformers
+        product: Tokenizers
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: de.justuswaechter.LokalKIWorkspace
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        MARKETING_VERSION: 0.2.0
+        CURRENT_PROJECT_VERSION: 2
+        PRODUCT_NAME: Arbeitsraum
+        PRODUCT_MODULE_NAME: Lokal_KI_Workspace
+        INFOPLIST_KEY_CFBundleDisplayName: Arbeitsraum
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_NSPrincipalClass: NSApplication
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Das Mikrofon wird nur auf Wunsch verwendet, um lokal Audio aufzunehmen."
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "Audio wird ausschließlich mit verfügbarer Offline-Spracherkennung transkribiert."
+        CODE_SIGN_ENTITLEMENTS: Config/LokalKIWorkspace.entitlements
+        ENABLE_APP_SANDBOX: YES
+        ENABLE_HARDENED_RUNTIME: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+  LokalKIWorkspaceTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/LocalKIWorkspaceTests
+    dependencies:
+      - target: LokalKIWorkspace
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: de.justuswaechter.LokalKIWorkspaceTests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Arbeitsraum.app/Contents/MacOS/Arbeitsraum"
+        BUNDLE_LOADER: "$(TEST_HOST)"
