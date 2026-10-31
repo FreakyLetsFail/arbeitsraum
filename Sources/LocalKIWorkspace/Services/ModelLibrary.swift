@@ -156,6 +156,9 @@ final class ModelLibrary: ObservableObject {
                 answer += text
                 onChunk(text)
             case .info(let info):
+                let promptTokens = info.totalPromptTokenCount
+                lastInputTokenCount = promptTokens
+                onContextTokens(promptTokens)
                 switch info.stopReason {
                 case .stop: completed = true
                 case .length: throw ModelLibraryError.message("Das Ausgabelimit wurde erreicht. Die sichtbare Teilantwort ist unvollständig; bitte eine kürzere Aufgabe stellen.")

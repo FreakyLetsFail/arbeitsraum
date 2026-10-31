@@ -17,6 +17,7 @@ struct AssistantPanel: View {
     @State private var showingImport = false
     @State private var importing = false
     @State private var memoryDraft: String?
+    @State private var templateDraft: WorkspaceTemplate?
     @State private var exactContextTokens: Int?
 
     @State private var editingMessageID: UUID?
@@ -105,6 +106,12 @@ struct AssistantPanel: View {
                 ReplyEditor(text: Binding(get: { messages[index].text }, set: { messages[index].text = $0; persist() }))
             }
         }
+        .sheet(item: $templateDraft) { template in
+            SaveTemplateSheet(template: template) { saved in
+                store.saveTemplates(store.templates + [saved])
+                templateDraft = nil
+            }
+        }
     }
     private var composer: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -138,7 +145,7 @@ struct AssistantPanel: View {
                     if importing { ProgressView().controlSize(.small) }
                     if store.settings.runtime == .mlx {
                         ContextUsageIndicator(tokens: exactContextTokens ?? estimatedContextTokens,
-                                              isExact: exactContextTokens != nil)
+                                              isEstimated: exactContextTokens == nil)
                     } else {
                         Image(systemName: "circle.dashed")
                             .font(.system(size: 13)).foregroundStyle(.tertiary)
@@ -203,7 +210,7 @@ struct AssistantPanel: View {
                 if message.text.isEmpty && isGenerating { ProgressView().controlSize(.small).accessibilityLabel("Antwort wird vorbereitet") }
                 else if !message.text.isEmpty { Text(message.text).font(.system(size: 13)).lineSpacing(4).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
                 if message.contextTrimmed == true {
-                    Label("Ältere Chatbeiträge wurden für diese Anfrage gekürzt. Der vollständige Chat bleibt gespeichert.", systemImage: "arrow.down.right.and.arrow.up.left")
+                    Label("Der Modellkontext wurde für diese Anfrage begrenzt. Ältere Chatbeiträge oder Quellenauszüge können fehlen; der vollständige Chat und die Projektdateien bleiben gespeichert.", systemImage: "arrow.down.right.and.arrow.up.left")
                         .font(.system(size: 10)).foregroundStyle(.secondary)
                 }
                 if !isGenerating {
@@ -215,6 +222,9 @@ struct AssistantPanel: View {
                             Button("Kopieren") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(message.text, forType: .string) }
                             Button("Bearbeiten") { editingMessageID = message.id }
                             Button("Merken") { memoryDraft = String(message.text.prefix(1_000)) }
+                            Button("Als Vorlage speichern") { prepareTemplate(from: message) }
+                                .disabled(message.status != .complete)
+                                .help("Antwort als lokale, wiederverwendbare Vorlage speichern")
                             if project.allFiles.first(where: { $0.id == (activeFileID ?? project.id) })?.kind == .document {
                                 Button("Einfügen") {
                                     let id = activeFileID ?? project.id
@@ -246,10 +256,7 @@ struct AssistantPanel: View {
     private var estimatedContextTokens: Int {
         let selected = attachments.intersection(Set(project.allFiles.map(\.id)))
         let sources = ProjectKnowledge.sources(project: project, question: question, includeProject: includeDocument, attachments: selected)
-        var instructions = ProjectKnowledge.instructions(project: project, sources: sources)
-        if tableContextIncluded {
-            instructions += "\n\nDu kannst Tabellenzellen in dieser App nicht bearbeiten. Behaupte niemals, Zeilen, Spalten oder Zellwerte verändert zu haben. Kennzeichne Tabelleninhalte als Vorschläge."
-        }
+        let instructions = chatInstructions(sources: sources, request: question, includeTableCaution: tableContextIncluded)
         let history = messages.filter { $0.status == .complete }.suffix(6).map { String($0.text.prefix(1_500)) }
         let characters = instructions.unicodeScalars.count + history.reduce(0) { $0 + $1.unicodeScalars.count } + question.unicodeScalars.count
         return Int((Double(characters) / 3.6).rounded(.up))
@@ -264,18 +271,18 @@ struct AssistantPanel: View {
     }
     @MainActor private func generate() async {
         let clean = question.trimmingCharacters(in: .whitespacesAndNewlines)
-        let history = messages.filter { $0.status == .complete }.suffix(6).map { message in
+        let completeHistory = messages.filter { $0.status == .complete }
+        let recentHistory = completeHistory.suffix(6)
+        let historyTrimmed = completeHistory.count > recentHistory.count || recentHistory.contains { $0.text.count > 1_500 }
+        let history = recentHistory.map { message in
             var shortened = message; shortened.text = String(message.text.prefix(1_500)); return shortened
         }
         let selected = attachments.intersection(Set(project.allFiles.map(\.id)))
         let hasTableContext = project.allFiles.contains { $0.kind == .table && (includeDocument || selected.contains($0.id)) }
         let sources = ProjectKnowledge.sources(project: project, question: clean, includeProject: includeDocument, attachments: selected)
-        var instructions = ProjectKnowledge.instructions(project: project, sources: sources)
-        if hasTableContext {
-            instructions += "\n\nDu kannst Tabellenzellen in dieser App nicht bearbeiten. Behaupte niemals, Zeilen, Spalten oder Zellwerte verändert zu haben. Kennzeichne Tabelleninhalte als Vorschläge."
-        }
+        let instructions = chatInstructions(sources: sources, request: clean, includeTableCaution: hasTableContext)
         messages.append(.init(role: .user, text: clean, attachmentIDs: Array(selected)))
-        let response = WorkspaceMessage(role: .assistant, text: "", status: .incomplete, sources: sources)
+        let response = WorkspaceMessage(role: .assistant, text: "", status: .incomplete, sources: sources, contextTrimmed: historyTrimmed ? true : nil)
         messages.append(response); persist()
         question = ""; attachments = []; errorMessage = nil; isGenerating = true
         defer { isGenerating = false; generationTask = nil; persist() }
@@ -290,10 +297,7 @@ struct AssistantPanel: View {
                     // Only shrink the request sent to the model. The persisted chat and project files remain intact.
                     let shorterHistory = Array(history.suffix(2))
                     let shorterSources = ProjectKnowledge.sources(project: project, question: clean, includeProject: includeDocument, attachments: selected, budget: 3_000)
-                    var shorterInstructions = ProjectKnowledge.instructions(project: project, sources: shorterSources)
-                    if hasTableContext {
-                        shorterInstructions += "\n\nDu kannst Tabellenzellen in dieser App nicht bearbeiten. Behaupte niemals, Zeilen, Spalten oder Zellwerte verändert zu haben. Kennzeichne Tabelleninhalte als Vorschläge."
-                    }
+                    let shorterInstructions = chatInstructions(sources: shorterSources, request: clean, includeTableCaution: hasTableContext)
                     messages[index].sources = shorterSources
                     messages[index].contextTrimmed = true
                     result = try await generateLocally(instructions: shorterInstructions, userText: clean, history: shorterHistory, responseID: response.id)
@@ -314,11 +318,115 @@ struct AssistantPanel: View {
             if let index = messages.firstIndex(where: { $0.id == responseID }) { messages[index].text += chunk }
         }
     }
+    private func chatInstructions(sources: [WorkspaceSource], request: String, includeTableCaution: Bool) -> String {
+        var instructions = ProjectKnowledge.instructions(project: project, sources: sources)
+        if isTemplateRequest(request) {
+            let examples = store.templates.prefix(6).map { template in
+                let body = String(template.body.prefix(1_400))
+                let prompt = String(template.systemPrompt.prefix(500))
+                return """
+                Vorlage: \(template.name) · \(template.kind.title)
+                Gerüst:
+                \(body)
+                Chat-Anweisungen:
+                \(prompt)
+                """
+            }.joined(separator: "\n\n")
+            instructions += """
+
+
+            <einstellungen_vorlagen>
+            Die nutzende Person bittet um einen Vorlagenentwurf. Verwende die gespeicherten Vorlagen als Beispiele für Struktur und Format. Erstelle ein passendes Gerüst mit neutralen Platzhaltern; übernimm keine ausgefüllten Beispielwerte und erfinde keine Projekt- oder Personendaten. Bei einer Tabellenvorlage gib Spalten und Zeilen tabulatorgetrennt aus, ohne Codeblock.
+            \(examples)
+            </einstellungen_vorlagen>
+            """
+        }
+        if includeTableCaution {
+            instructions += "\n\nDu kannst Tabellenzellen in dieser App nicht bearbeiten. Behaupte niemals, Zeilen, Spalten oder Zellwerte verändert zu haben. Kennzeichne Tabelleninhalte als Vorschläge."
+        }
+        return instructions
+    }
+    private func isTemplateRequest(_ request: String) -> Bool {
+        let normalized = request.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "de_DE"))
+        return ["vorlage", "muster", "template", "schema"].contains { normalized.localizedCaseInsensitiveContains($0) }
+    }
+    private func prepareTemplate(from message: WorkspaceMessage) {
+        let fileKind = project.allFiles.first(where: { $0.id == (activeFileID ?? project.id) })?.kind
+        let kind: WorkspaceKind = fileKind == .table ? .table : .document
+        let firstLine = message.text.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
+        let suggestedName = firstLine
+            .trimmingCharacters(in: CharacterSet(charactersIn: "#* \t"))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = suggestedName.isEmpty || suggestedName.count > 72
+            ? (kind == .document ? "Neue Dokumentvorlage" : "Neue Tabellenvorlage")
+            : suggestedName
+        templateDraft = WorkspaceTemplate(name: name, kind: kind, body: message.text, systemPrompt: project.systemPrompt)
+    }
+}
+
+private struct SaveTemplateSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var name: String
+    @State private var kind: WorkspaceKind
+    @State private var bodyText: String
+    @State private var systemPrompt: String
+    let onSave: (WorkspaceTemplate) -> Void
+
+    init(template: WorkspaceTemplate, onSave: @escaping (WorkspaceTemplate) -> Void) {
+        _name = State(initialValue: template.name)
+        _kind = State(initialValue: template.kind)
+        _bodyText = State(initialValue: template.body)
+        _systemPrompt = State(initialValue: template.systemPrompt)
+        self.onSave = onSave
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Vorlage aus Chatantwort speichern").font(.system(size: 19, weight: .semibold))
+                Text("Prüfe Gerüst und Anweisungen. Die Vorlage wird lokal gespeichert und kann später weiter bearbeitet werden.")
+                    .font(.system(size: 12)).foregroundStyle(.secondary)
+            }
+            TextField("Name der Vorlage", text: $name).textFieldStyle(.roundedBorder)
+            Picker("Vorlagentyp", selection: $kind) {
+                ForEach(WorkspaceKind.allCases) { type in Text(type.title).tag(type) }
+            }
+            .pickerStyle(.segmented)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(kind == .document ? "Dokumentgerüst" : "Tabellengerüst")
+                    .font(.system(size: 12, weight: .semibold))
+                TextEditor(text: $bodyText).font(.system(size: 12, design: .monospaced))
+                    .padding(8).background(.background, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.primary.opacity(0.12)))
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Chat-Anweisungen für neue Projekte").font(.system(size: 12, weight: .semibold))
+                TextEditor(text: $systemPrompt).font(.system(size: 12))
+                    .padding(8).background(.background, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.primary.opacity(0.12)))
+                    .frame(height: 100)
+            }
+            HStack {
+                Button("Abbrechen", role: .cancel) { dismiss() }
+                Spacer()
+                Button("Vorlage speichern") {
+                    let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !cleanName.isEmpty else { return }
+                    onSave(WorkspaceTemplate(name: cleanName, kind: kind, body: bodyText, systemPrompt: systemPrompt))
+                    dismiss()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || bodyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(22)
+        .frame(width: 600, height: 650)
+    }
 }
 
 private struct ContextUsageIndicator: View {
     let tokens: Int
-    let isExact: Bool
+    let isEstimated: Bool
     private var limit: Int { MLXRuntime.maxInputTokens }
     private var fraction: Double { min(1, max(0, Double(tokens) / Double(limit))) }
     private var color: Color { fraction >= 0.9 ? .orange : .accentColor }
@@ -327,12 +435,13 @@ private struct ContextUsageIndicator: View {
             Circle().stroke(.primary.opacity(0.14), lineWidth: 2.5)
             Circle().trim(from: 0, to: fraction).stroke(color, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            Text("\(Int((fraction * 100).rounded()))").font(.system(size: 7, weight: .semibold, design: .rounded))
+            Text("\(isEstimated ? "≈" : "")\(Int((fraction * 100).rounded()))")
+                .font(.system(size: 7, weight: .semibold, design: .rounded))
         }
         .frame(width: 22, height: 22)
-        .help("\(isExact ? "Gemessen" : "Geschätzt"): \(tokens) von \(limit) Eingabetokens (\(Int((fraction * 100).rounded())) %). Bei zu großem Kontext kürzt die App ältere Chatbeiträge und Quellenauszüge für diese Anfrage; Chat und Originaldateien bleiben gespeichert.")
+        .help("\(isEstimated ? "Grobe Vorschau aus der Zeichenanzahl" : "Mit dem aktiven Modell und seiner Chatvorlage gezählt"): \(tokens) von \(limit) Eingabetokens (\(Int((fraction * 100).rounded())) %). Das ist das App-Limit, nicht zwingend das gesamte Modellfenster. Es gibt keine automatische Zusammenfassung oder Änderung von Projektdateien. Bei Überschreitung wird der für diese Anfrage verwendete Chatverlauf oder die Quellenauswahl sichtbar begrenzt; der vollständige Chat und die Originaldateien bleiben gespeichert.")
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Kontext \(isExact ? "gemessen" : "geschätzt") \(Int((fraction * 100).rounded())) Prozent von \(limit) Eingabetokens")
+        .accessibilityLabel("Kontext \(isEstimated ? "grob geschätzt" : "mit aktivem Modell gezählt") \(Int((fraction * 100).rounded())) Prozent vom App-Limit von \(limit) Eingabetokens")
     }
 }
 

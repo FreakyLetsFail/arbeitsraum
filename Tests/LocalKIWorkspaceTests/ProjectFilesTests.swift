@@ -68,6 +68,7 @@ final class ProjectFilesTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: root) }
         let files: [WorkspaceFile] = [.init(name: "Blatt/1", kind: .table, rows: [["Fach", "Punkte"], ["Mathe & Sprache", "12"], ["Summe", "=SUM(B2:B2)"]]), .init(name: "Blatt 2", kind: .table, rows: [["Text", "0012"]])]
         let url = root.appendingPathComponent("test.xlsx")
+        try Data("previous export".utf8).write(to: url)
         try OfficeFiles.writeXLSX(files, to: url)
         let attachment = XCTAttachment(data: try Data(contentsOf: url), uniformTypeIdentifier: "org.openxmlformats.spreadsheetml.sheet")
         attachment.name = "synthetic-export.xlsx"; attachment.lifetime = .keepAlways; add(attachment)

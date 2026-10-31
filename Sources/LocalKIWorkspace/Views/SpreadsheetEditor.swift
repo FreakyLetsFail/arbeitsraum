@@ -72,12 +72,12 @@ struct SpreadsheetEditor: View {
                 TextField("Zelle auswählen", text: cellValue).textFieldStyle(.plain)
                     .disabled(selected == nil).accessibilityLabel("Zellinhalt")
                 Spacer(minLength: 8)
-                Button { project.tableRows.append(Array(repeating: "", count: columns)) } label: { Label("Zeile", systemImage: "plus") }
+                Button { project.tableRows.append(Array(repeating: "", count: columns)) } label: { Label("Zeile hinzufügen", systemImage: "plus") }
                     .help("Zeile hinzufügen")
                 Button {
                     for index in project.tableRows.indices { project.tableRows[index].append("") }
                     if project.tableRows.isEmpty { project.tableRows = [[""]] }
-                } label: { Label("Spalte", systemImage: "plus") }
+                } label: { Label("Spalte hinzufügen", systemImage: "plus") }
                     .help("Spalte hinzufügen")
                 Menu {
                     if let selected {

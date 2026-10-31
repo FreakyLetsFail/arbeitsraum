@@ -5,6 +5,8 @@ import UniformTypeIdentifiers
 struct WorkspaceRootView: View {
     @ObservedObject var store: WorkspaceStore
     @State private var selectedProjectID: UUID?
+    @State private var expandedProjectIDs: Set<UUID> = []
+    @State private var selectedFileIDs: [UUID: UUID] = [:]
     @State private var showingNewProject = false
     @State private var showingSettings = false
     @State private var newKind: WorkspaceKind = .document
@@ -26,17 +28,10 @@ struct WorkspaceRootView: View {
                         .padding(10).contentShape(Rectangle())
                         .background(selectedProjectID == nil ? Color.accentColor.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 7))
                 }.buttonStyle(.plain).padding(.horizontal, 10).accessibilityIdentifier("all-projects")
-                List(selection: $selectedProjectID) {
+                List {
                     Section("Projekte") {
-                        ForEach(store.projects.filter { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) }) { project in
-                            Label(project.title, systemImage: project.kind.symbol)
-                                .lineLimit(1).tag(Optional(project.id))
-                                .contextMenu {
-                                    Button("In Papierkorb", role: .destructive) {
-                                        if selectedProjectID == project.id { selectedProjectID = nil }
-                                        store.deleteProject(project)
-                                    }
-                                }
+                        ForEach(visibleProjects) { project in
+                            projectRow(project)
                         }
                     }
                 }.listStyle(.sidebar)
@@ -49,7 +44,7 @@ struct WorkspaceRootView: View {
             .navigationSplitViewColumnWidth(min: 190, ideal: 220, max: 280)
         } detail: {
             if let project = store.projects.first(where: { $0.id == selectedProjectID }) {
-                WorkspaceEditor(project: binding(for: project), store: store, onCreated: { selectedProjectID = $0 })
+                WorkspaceEditor(project: binding(for: project), activeID: fileSelection(for: project.id), store: store, onCreated: { selectedProjectID = $0 })
                     .id(project.id)
             } else {
                 WorkspaceOverview(store: store, onCreate: create, onSelect: { selectedProjectID = $0 })
@@ -64,6 +59,94 @@ struct WorkspaceRootView: View {
         } message: { Text(store.persistenceError ?? "") }
     }
     private func create(_ kind: WorkspaceKind) { newKind = kind; showingNewProject = true }
+    private var visibleProjects: [WorkspaceProject] {
+        store.projects.filter { project in
+            search.isEmpty || project.title.localizedCaseInsensitiveContains(search) ||
+                project.allFiles.contains { $0.name.localizedCaseInsensitiveContains(search) }
+        }
+    }
+    private func projectRow(_ project: WorkspaceProject) -> some View {
+        let expanded = expandedProjectIDs.contains(project.id)
+        let selectedProject = selectedProjectID == project.id && (selectedFileIDs[project.id] == nil || selectedFileIDs[project.id] == project.id)
+        return VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 2) {
+                Button {
+                    if expanded { expandedProjectIDs.remove(project.id) }
+                    else { expandedProjectIDs.insert(project.id) }
+                } label: {
+                    Image(systemName: expanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 9, weight: .semibold))
+                        .frame(width: 18, height: 30)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(expanded ? "Dateien einklappen" : "Dateien anzeigen")
+                .accessibilityLabel(expanded ? "Dateien von \(project.title) einklappen" : "Dateien von \(project.title) anzeigen")
+
+                Button { selectProject(project) } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: project.kind.symbol)
+                        Text(project.title).lineLimit(1)
+                        Spacer(minLength: 0)
+                    }
+                    .font(.system(size: 12))
+                    .padding(.horizontal, 8)
+                    .frame(height: 30)
+                    .contentShape(Rectangle())
+                    .foregroundStyle(selectedProject ? Color.white : Color.primary)
+                    .background(selectedProject ? Color.accentColor : Color.clear, in: RoundedRectangle(cornerRadius: 7))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Projekt \(project.title)")
+            }
+
+            if expanded {
+                ForEach(project.allFiles) { file in
+                    let selectedFile = selectedProjectID == project.id && selectedFileIDs[project.id] == file.id
+                    Button { selectFile(file, in: project) } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: file.kind.symbol).frame(width: 14)
+                            Text(file.name).lineLimit(1)
+                            Spacer(minLength: 0)
+                        }
+                        .font(.system(size: 11))
+                        .padding(.leading, 30)
+                        .padding(.trailing, 8)
+                        .frame(height: 27)
+                        .contentShape(Rectangle())
+                        .foregroundStyle(selectedFile ? Color.white : Color.secondary)
+                        .background(selectedFile ? Color.accentColor.opacity(0.82) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Datei \(file.name) in \(project.title) öffnen")
+                }
+            }
+        }
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets(top: 2, leading: 8, bottom: 2, trailing: 8))
+        .contextMenu {
+            Button("In Papierkorb", role: .destructive) {
+                if selectedProjectID == project.id {
+                    selectedProjectID = nil
+                    selectedFileIDs[project.id] = nil
+                }
+                expandedProjectIDs.remove(project.id)
+                store.deleteProject(project)
+            }
+        }
+    }
+    private func selectProject(_ project: WorkspaceProject) {
+        selectedProjectID = project.id
+        selectedFileIDs[project.id] = nil
+    }
+    private func selectFile(_ file: WorkspaceFile, in project: WorkspaceProject) {
+        selectedProjectID = project.id
+        selectedFileIDs[project.id] = file.id
+        expandedProjectIDs.insert(project.id)
+    }
+    private func fileSelection(for projectID: UUID) -> Binding<UUID?> {
+        Binding(get: { selectedFileIDs[projectID] }, set: { selectedFileIDs[projectID] = $0 })
+    }
     private func binding(for project: WorkspaceProject) -> Binding<WorkspaceProject> {
         Binding(get: { store.projects.first { $0.id == project.id } ?? project }, set: { changed in
             guard store.projects.contains(where: { $0.id == project.id }) else { return }
@@ -199,6 +282,7 @@ struct NewProjectSheet: View {
 
 struct WorkspaceEditor: View {
     @Binding var project: WorkspaceProject
+    @Binding var activeID: UUID?
     @ObservedObject var store: WorkspaceStore
     let onCreated: (UUID) -> Void
     @State private var showingChat = true
@@ -207,7 +291,6 @@ struct WorkspaceEditor: View {
     @State private var showingMemory = false
     @State private var showingImport = false
     @State private var importing = false
-    @State private var activeID: UUID?
     @State private var deletingID: UUID?
     private var fileID: UUID { activeID ?? project.id }
     private var activeFile: WorkspaceFile { project.allFiles.first { $0.id == fileID } ?? project.allFiles[0] }
@@ -216,33 +299,6 @@ struct WorkspaceEditor: View {
     }
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                Image(systemName: "folder").foregroundStyle(.secondary)
-                Text("Arbeitsbereich").font(.system(size: 12)).foregroundStyle(.secondary)
-                Text("·").foregroundStyle(.tertiary)
-                TextField("Projektname", text: $project.title).font(.system(size: 14, weight: .medium)).textFieldStyle(.plain)
-                Spacer(minLength: 6)
-                Button { showingAudio = true } label: { Label("Audio", systemImage: "waveform") }
-                Button { showingMemory = true } label: { Label("Gedächtnis", systemImage: "bookmark") }
-                Menu {
-                    if activeFile.kind == .document {
-                        Button("Word-Dokument (.docx)") { export("docx") }
-                        Button("Rich Text (.rtf)") { export("rtf") }
-                        Button("Text (.txt)") { export("txt") }
-                    }
-                    if activeFile.kind == .table {
-                        Button("Excel-Arbeitsmappe – alle Tabellen (.xlsx)") { export("xlsx") }
-                        Button("Dieses Blatt (.csv)") { export("csv") }
-                    }
-                    Divider()
-                    Button("Chat-Anweisungen bearbeiten") { showingPrompt = true }
-                } label: { Image(systemName: "ellipsis.circle") }.menuStyle(.borderlessButton).fixedSize().accessibilityLabel("Export und Projekteinstellungen")
-                Divider().frame(height: 18)
-                Button { showingChat.toggle() } label: { Image(systemName: "sidebar.right") }
-                    .help(showingChat ? "Chat ausblenden" : "Chat einblenden")
-                    .accessibilityLabel(showingChat ? "Chat ausblenden" : "Chat einblenden")
-            }.buttonStyle(.borderless).font(.system(size: 12)).padding(.horizontal, 18).frame(height: 50)
-            Divider()
             HStack(spacing: 6) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 5) {
@@ -283,6 +339,36 @@ struct WorkspaceEditor: View {
                     AssistantPanel(project: $project, store: store, activeFileID: fileID)
                         .frame(minWidth: 300, idealWidth: 370, maxWidth: 540, maxHeight: .infinity)
                 }
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                TextField("Projektname", text: $project.title)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 280)
+                    .font(.system(size: 14, weight: .medium))
+                    .accessibilityLabel("Projektname")
+            }
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button { showingAudio = true } label: { Label("Audio", systemImage: "waveform").labelStyle(.titleAndIcon) }
+                Button { showingMemory = true } label: { Label("Gedächtnis", systemImage: "bookmark").labelStyle(.titleAndIcon) }
+                Menu {
+                    if activeFile.kind == .document {
+                        Button("Word-Dokument (.docx)") { export("docx") }
+                        Button("Rich Text (.rtf)") { export("rtf") }
+                        Button("Text (.txt)") { export("txt") }
+                    }
+                    if activeFile.kind == .table {
+                        Button("Excel-Arbeitsmappe – alle Tabellen (.xlsx)") { export("xlsx") }
+                        Button("Dieses Blatt (.csv)") { export("csv") }
+                    }
+                    Divider()
+                    Button("Chat-Anweisungen bearbeiten") { showingPrompt = true }
+                } label: { Image(systemName: "ellipsis.circle") }
+                    .accessibilityLabel("Export und Projekteinstellungen")
+                Button { showingChat.toggle() } label: { Image(systemName: "sidebar.right") }
+                    .help(showingChat ? "Chat ausblenden" : "Chat einblenden")
+                    .accessibilityLabel(showingChat ? "Chat ausblenden" : "Chat einblenden")
             }
         }
         .sheet(isPresented: $showingAudio) { AudioImportView(project: $project, store: store, onCreated: onCreated, destinationFileID: activeFile.kind == .document ? fileID : nil) }

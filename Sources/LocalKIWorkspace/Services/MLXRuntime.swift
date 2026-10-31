@@ -27,10 +27,24 @@ actor MLXRuntime {
 
     func response(systemPrompt: String, userText: String, history: [WorkspaceMessage] = []) async throws -> AsyncThrowingStream<Generation, Error> {
         guard let container else { throw ModelLibraryError.message("Es ist kein MLX-Modell geladen.") }
-        let tokens = await container.encode(systemPrompt + "\n" + history.map(\.text).joined(separator: "\n") + "\n" + userText)
-        lastInputTokenCount = tokens.count
-        guard tokens.count <= Self.maxInputTokens else {
-            throw ModelLibraryError.message("Der Text ist für den begrenzten Kontext dieser Version zu lang (\(tokens.count) Eingabetokens, maximal 6.000). Bitte mit einem kürzeren Abschnitt arbeiten.")
+        var messages: [[String: any Sendable]] = []
+        if !systemPrompt.isEmpty { messages.append(["role": "system", "content": systemPrompt]) }
+        messages.append(contentsOf: history.map { message in
+            ["role": message.role == .user ? "user" : "assistant", "content": message.text]
+        })
+        messages.append(["role": "user", "content": userText])
+        let templateMessages = messages
+        let additionalContext: [String: any Sendable] = ["enable_thinking": false]
+        let tokenCount = try await container.perform { context in
+            try context.tokenizer.applyChatTemplate(
+                messages: templateMessages,
+                tools: nil,
+                additionalContext: additionalContext
+            ).count
+        }
+        lastInputTokenCount = tokenCount
+        guard tokenCount <= Self.maxInputTokens else {
+            throw ModelLibraryError.message("Der Chatkontext ist zu groß (\(tokenCount) Eingabetokens nach Modellvorlage, maximal 6.000). Bitte kürze die Anfrage oder wähle weniger Quellen. Es werden keine Projektdateien verändert.")
         }
         // Each request gets a fresh session: no patient or project context is carried into the next request.
         let session = ChatSession(
@@ -38,7 +52,7 @@ actor MLXRuntime {
             instructions: systemPrompt,
             history: history.map { Chat.Message(role: $0.role == .user ? .user : .assistant, content: $0.text) },
             generateParameters: GenerateParameters(maxTokens: 1536, maxKVSize: 8192, temperature: 0.2),
-            additionalContext: ["enable_thinking": false]
+            additionalContext: additionalContext
         )
         return session.streamDetails(to: userText)
     }

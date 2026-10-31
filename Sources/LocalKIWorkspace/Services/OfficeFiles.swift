@@ -223,13 +223,7 @@ enum OfficeFiles {
             let data = Data(("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" + text).utf8)
             try zip.addEntry(with: path, type: .file, uncompressedSize: Int64(data.count), compressionMethod: .deflate) { position, size in data.subdata(in: Int(position)..<Int(position) + size) }
         }
-        try ExportFileWriter.coordinateWrite(to: url) { coordinatedURL in
-            if FileManager.default.fileExists(atPath: coordinatedURL.path) {
-                _ = try FileManager.default.replaceItemAt(coordinatedURL, withItemAt: temporary)
-            } else {
-                try FileManager.default.moveItem(at: temporary, to: coordinatedURL)
-            }
-        }
+        try ExportFileWriter.replaceContents(from: temporary, at: url)
     }
     private static func escape(_ text: String) -> String {
         String(text.unicodeScalars.filter { $0.value >= 32 || [9, 10, 13].contains($0.value) }).replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;").replacingOccurrences(of: ">", with: "&gt;").replacingOccurrences(of: "\"", with: "&quot;").replacingOccurrences(of: "'", with: "&apos;")
@@ -259,6 +253,25 @@ enum ExportFileWriter {
         if let operationError { throw operationError }
         if let coordinationError { throw coordinationError }
         guard didCoordinate else { throw CocoaError(.fileWriteUnknown) }
+    }
+
+    static func replaceContents(from source: URL, at destination: URL) throws {
+        try coordinateWrite(to: destination) { coordinatedURL in
+            let manager = FileManager.default
+            if !manager.fileExists(atPath: coordinatedURL.path),
+               !manager.createFile(atPath: coordinatedURL.path, contents: nil) {
+                throw CocoaError(.fileWriteNoPermission)
+            }
+
+            let input = try FileHandle(forReadingFrom: source)
+            let output = try FileHandle(forWritingTo: coordinatedURL)
+            defer { try? input.close(); try? output.close() }
+            try output.truncate(atOffset: 0)
+            while let chunk = try input.read(upToCount: 1_048_576), !chunk.isEmpty {
+                try output.write(contentsOf: chunk)
+            }
+            try output.synchronize()
+        }
     }
 }
 
