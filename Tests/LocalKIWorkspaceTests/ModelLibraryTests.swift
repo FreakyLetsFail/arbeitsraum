@@ -175,9 +175,13 @@ final class ModelLibraryTests: XCTestCase {
     func testInstalledModelsRespondToSyntheticPsychologyWritingTasks() async throws {
         let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appending(path: "LokalKIWorkspace/Models", directoryHint: .isDirectory)
-        let ids = ["mlx-community/LFM2.5-1.2B-Instruct-4bit", "mlx-community/Qwen3-0.6B-4bit"]
-        guard ids.allSatisfy({ ModelDownloader.installation(at: ModelDownloader.directory(for: $0, root: root)) != nil }) else {
+        let baselineIDs = ["mlx-community/LFM2.5-1.2B-Instruct-4bit", "mlx-community/Qwen3-0.6B-4bit"]
+        guard baselineIDs.allSatisfy({ ModelDownloader.installation(at: ModelDownloader.directory(for: $0, root: root)) != nil }) else {
             throw XCTSkip("Requires two locally installed models; no download is performed.")
+        }
+        let optionalIDs = ["mlx-community/Qwen3.5-4B-4bit"]
+        let ids = baselineIDs + optionalIDs.filter {
+            ModelDownloader.installation(at: ModelDownloader.directory(for: $0, root: root)) != nil
         }
         let project = WorkspaceProject(title: "Fiktiver Fall", kind: .document, documentText: """
         Fiktive Fallnotiz, 12. Oktober 2026. Lea ist erwachsen. Sie berichtet seit drei Wochen über Anspannung vor Prüfungen und schlechten Schlaf. An Werktagen schlafe sie nach eigener Angabe etwa fünf Stunden. Im Gespräch erscheint sie pünktlich und beantwortet Fragen. Es wurden keine standardisierten Tests durchgeführt und keine Diagnose gestellt. Der nächste Termin ist am 19. Oktober 2026.

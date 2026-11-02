@@ -32,7 +32,7 @@ Für die einmalige Einrichtung: unter **Modelle & Einstellungen → Datenschutz*
 
 Die Modellbibliothek zeigt zehn kuratierte native MLX-Modelle. Bereits installierte ältere Modelle bleiben unter „Installiert“ verfügbar. Die neuen Modelle sind noch nicht alle durch praktische Inferenz geprüft. Die Empfehlung berücksichtigt Hardware, sämtliche Modellgewichte und eine geschätzte Kontext-/Systemreserve. Sie ist kein Qualitätsbenchmark und keine fachliche Eignungsbewertung. Bei MoE müssen auch die nicht aktiven Gewichte in den Speicher passen.
 
-Qwen3 0,6B und LFM2.5 1,2B Instruct wurden auf einem M2 mit 16 GB tatsächlich geladen und zur Textgenerierung verwendet. Größere Modelle, MiniCPM und Ollama wurden hier nicht praktisch geprüft. MiniCPM-V 4.7 35B-A3B ist als lokale Serveroption erfasst; native Bild-/Video-Inferenz mit MiniCPM ist nicht eingebaut. Importierte Bilder liefern derzeit lokal erkannten Text an den Chat.
+Qwen3 0,6B, LFM2.5 1,2B Instruct und Qwen3.5 4B wurden auf einem M2 mit 16 GB tatsächlich geladen und zur Textgenerierung verwendet. Die übrigen größeren Modelle, MiniCPM und Ollama wurden hier nicht praktisch geprüft. MiniCPM-V 4.7 35B-A3B ist als lokale Serveroption erfasst; native Bild-/Video-Inferenz mit MiniCPM ist nicht eingebaut. Importierte Bilder liefern derzeit lokal erkannten Text an den Chat.
 
 Details: [MODELS.md](MODELS.md). Grenzen dieser Version: **6.000 Eingabetokens**, **1.536 Ausgabetokens**, **8K KV-Cache**. Der Kontextkreis ist vor dem Senden eine grobe Schätzung; die Eingabegrenze prüft das gewählte MLX-Tokenizer-Modell. Bleibt eine Anfrage nach der Kürzung zu lang, erscheint eine Fehlermeldung. Thinking-Modelle können das Ausgabelimit früh erreichen.
 
@@ -51,7 +51,7 @@ Falls Xcode nur einen Metal-Platzhalter enthält, den offiziellen Compiler unter
 
 ## Prüfstand
 
-Stand 02.11.2026: 32 XCTest-Fälle erfolgreich. Zusätzlich wurde ein synthetischer Arbeitsablauf mit Dokument, lokaler Chatantwort, bearbeitbarer Einfügevorschau, TSV-Einfügen und Formelaktualisierung in der App geprüft. LFM2.5 1,2B und Qwen3 0,6B beantworteten je eine Terminfrage und eine einfache Summenfrage anhand synthetischer Quellen korrekt; dies ist kein allgemeiner Qualitätsnachweis.
+Stand 02.11.2026: 33 XCTest-Fälle erfolgreich; ein anschließend ergänzter Icon-Test wurde separat erfolgreich ausgeführt. Zusätzlich wurde ein synthetischer Arbeitsablauf mit Dokument, lokaler Chatantwort, bearbeitbarer Einfügevorschau, TSV-Einfügen und Formelaktualisierung in der App geprüft. LFM2.5 1,2B und Qwen3 0,6B beantworteten je eine Terminfrage und eine einfache Summenfrage anhand synthetischer Quellen korrekt. Qwen3.5 4B wurde zusätzlich mit sechs Aufgaben zu einem fiktiven psychologischen Fall erprobt: Die Kernangaben waren in diesem Lauf korrekt, bei offenen Fragen gab es Ungenauigkeiten. Dies ist kein allgemeiner Qualitäts- oder klinischer Eignungsnachweis.
 
 
 Stand 20.10.2026, M2 / 16 GB / Xcode 27.1: **29 XCTest-Fälle erfolgreich**, einschließlich echter lokaler MLX-Inferenz mit synthetischen Projektquellen, Chatverlauf, Modellwechsel und Entladen. Weitere Tests decken Persistenz/Migration, Importkopien, Projektisolation, Quellenbudgets, Dateiexport und Ersetzen, DOCX- und XLSX-Roundtrips, CSV, Formeln/Fehlerfälle, begrenzte Referenzauswertung und gesperrte Downloads im Offline-Modus ab.

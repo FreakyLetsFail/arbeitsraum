@@ -1,7 +1,15 @@
+import AppKit
 import XCTest
 @testable import Lokal_KI_Workspace
 
 final class WorkspaceTests: XCTestCase {
+    func testApplicationIconIsBundledAtFullResolution() throws {
+        XCTAssertEqual(Bundle.main.object(forInfoDictionaryKey: "CFBundleIconFile") as? String, "AuroraIcon")
+        let url = try XCTUnwrap(Bundle.main.url(forResource: "AuroraIcon", withExtension: "icns"))
+        let image = try XCTUnwrap(NSImage(contentsOf: url))
+        XCTAssertTrue(image.representations.contains { $0.pixelsWide >= 1024 && $0.pixelsHigh >= 1024 })
+    }
+
     func testLocalModelEndpointRejectsNonLoopbackHosts() {
         XCTAssertTrue(LoopbackOpenAIEngine.isAllowedEndpoint("http://127.0.0.1:11434/v1"))
         XCTAssertTrue(LoopbackOpenAIEngine.isAllowedEndpoint("http://localhost:8000/v1"))

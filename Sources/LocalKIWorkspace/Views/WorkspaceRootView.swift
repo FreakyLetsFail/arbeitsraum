@@ -47,11 +47,15 @@ struct WorkspaceRootView: View {
         NavigationSplitView {
             VStack(spacing: 0) {
                 HStack {
-                    Image(systemName: "sun.max.fill")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 30, height: 30)
-                        .background(WorkspacePalette.clay, in: Circle())
+                    if let icon = AuroraBrand.icon {
+                        Image(nsImage: icon).resizable().interpolation(.high)
+                            .aspectRatio(contentMode: .fit).frame(width: 34, height: 34)
+                            .accessibilityHidden(true)
+                    } else {
+                        Image(systemName: "sun.max.fill").font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white).frame(width: 30, height: 30)
+                            .background(WorkspacePalette.clay, in: Circle()).accessibilityHidden(true)
+                    }
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Aurora").font(.system(size: 16, weight: .medium, design: .serif))
                         Text("Dein lokaler Arbeitsbereich").font(.system(size: 10))
