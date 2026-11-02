@@ -1,4 +1,4 @@
-# Arbeitsraum
+# Aurora
 
 Native macOS-App für Dokumente, Tabellen und einen Chat mit lokalen Sprachmodellen. Projekte können mehrere Dateien, einen gespeicherten Chatverlauf und ein bearbeitbares Projektgedächtnis enthalten.
 
@@ -30,7 +30,7 @@ Der **Offline-Modus ist standardmäßig aktiv**. Er sperrt Modelldownloads und V
 
 Für die einmalige Einrichtung: unter **Modelle & Einstellungen → Datenschutz** Downloads freigeben, ein Modell herunterladen und danach Offline-Modus wieder aktivieren. Der öffentliche Modellkatalog ist in der App enthalten und wird nicht automatisch online aktualisiert. Downloads enthalten keine Projekttexte, Prompts oder Audiodateien. Gewichte sind kein Bestandteil dieses Repositorys.
 
-Der Katalog enthält 26 Einträge: 17 native MLX-Textmodelle, acht Optionen für einen separaten lokalen Server und eine hier inkompatible Nota-Variante. Die Empfehlung berücksichtigt Hardware, sämtliche Modellgewichte und eine geschätzte Kontext-/Systemreserve. Sie ist kein Qualitätsbenchmark und keine fachliche Eignungsbewertung. Bei MoE müssen auch die nicht aktiven Gewichte in den Speicher passen.
+Die Modellbibliothek zeigt zehn kuratierte native MLX-Modelle. Bereits installierte ältere Modelle bleiben unter „Installiert“ verfügbar. Die neuen Modelle sind noch nicht alle durch praktische Inferenz geprüft. Die Empfehlung berücksichtigt Hardware, sämtliche Modellgewichte und eine geschätzte Kontext-/Systemreserve. Sie ist kein Qualitätsbenchmark und keine fachliche Eignungsbewertung. Bei MoE müssen auch die nicht aktiven Gewichte in den Speicher passen.
 
 Qwen3 0,6B und LFM2.5 1,2B Instruct wurden auf einem M2 mit 16 GB tatsächlich geladen und zur Textgenerierung verwendet. Größere Modelle, MiniCPM und Ollama wurden hier nicht praktisch geprüft. MiniCPM-V 4.7 35B-A3B ist als lokale Serveroption erfasst; native Bild-/Video-Inferenz mit MiniCPM ist nicht eingebaut. Importierte Bilder liefern derzeit lokal erkannten Text an den Chat.
 

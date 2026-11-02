@@ -3,6 +3,7 @@ import SwiftUI
 struct WorkspaceSettingsView: View {
     @ObservedObject var store: WorkspaceStore
     @Environment(\.dismiss) private var dismiss
+    @State private var selectedTab = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -14,13 +15,16 @@ struct WorkspaceSettingsView: View {
             }
             .padding(18).background(WorkspacePalette.toolbar)
             Rectangle().fill(WorkspacePalette.border).frame(height: 1)
-            TabView {
-                ModelLibraryView(store: store)
+            TabView(selection: $selectedTab) {
+                ModelLibraryView(store: store, onOpenPrivacy: { selectedTab = 2 })
                     .tabItem { Label("Modelle", systemImage: "cpu") }
+                    .tag(0)
                 TemplateLibraryView(store: store)
                     .tabItem { Label("Vorlagen & Prompts", systemImage: "doc.on.doc") }
+                    .tag(1)
                 PrivacySettingsView(store: store)
                     .tabItem { Label("Datenschutz", systemImage: "lock.shield") }
+                    .tag(2)
             }
             .padding(14)
         }

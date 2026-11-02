@@ -495,7 +495,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = de.justuswaechter.LokalKIWorkspaceTests;
 				SDKROOT = macosx;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Arbeitsraum.app/Contents/MacOS/Arbeitsraum";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Aurora.app/Contents/MacOS/Aurora";
 			};
 			name = Debug;
 		};
@@ -509,7 +509,7 @@
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Arbeitsraum;
+				INFOPLIST_KEY_CFBundleDisplayName = Aurora;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Das Mikrofon wird nur auf Wunsch verwendet, um lokal Audio aufzunehmen.";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Audio wird ausschließlich mit verfügbarer Offline-Spracherkennung transkribiert.";
@@ -520,7 +520,7 @@
 				MARKETING_VERSION = 0.2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = de.justuswaechter.LokalKIWorkspace;
 				PRODUCT_MODULE_NAME = Lokal_KI_Workspace;
-				PRODUCT_NAME = Arbeitsraum;
+				PRODUCT_NAME = Aurora;
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 			};
@@ -539,7 +539,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = de.justuswaechter.LokalKIWorkspaceTests;
 				SDKROOT = macosx;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Arbeitsraum.app/Contents/MacOS/Arbeitsraum";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Aurora.app/Contents/MacOS/Aurora";
 			};
 			name = Release;
 		};
@@ -553,7 +553,7 @@
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Arbeitsraum;
+				INFOPLIST_KEY_CFBundleDisplayName = Aurora;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Das Mikrofon wird nur auf Wunsch verwendet, um lokal Audio aufzunehmen.";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Audio wird ausschließlich mit verfügbarer Offline-Spracherkennung transkribiert.";
@@ -564,7 +564,7 @@
 				MARKETING_VERSION = 0.2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = de.justuswaechter.LokalKIWorkspace;
 				PRODUCT_MODULE_NAME = Lokal_KI_Workspace;
-				PRODUCT_NAME = Arbeitsraum;
+				PRODUCT_NAME = Aurora;
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 			};

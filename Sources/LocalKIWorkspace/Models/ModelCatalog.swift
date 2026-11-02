@@ -36,6 +36,14 @@ struct CatalogModel: Decodable, Identifiable, Sendable {
               let data = try? Data(contentsOf: url), let models = try? JSONDecoder().decode([CatalogModel].self, from: data) else { return [] }
         return models
     }()
+    // Older catalog entries remain resolvable for existing installations and settings.
+    static let recommendedIDs: Set<String> = [
+        "mlx-community/Qwen3.5-0.8B-4bit", "mlx-community/Qwen3.5-2B-4bit",
+        "mlx-community/Qwen3.5-4B-4bit", "mlx-community/Qwen3.5-9B-4bit",
+        "mlx-community/Qwen3-4B-Instruct-2507-4bit", "mlx-community/gemma-4-e2b-it-4bit",
+        "mlx-community/gemma-4-e4b-it-4bit", "mlx-community/LFM2.5-1.2B-Instruct-4bit",
+        "LiquidAI/LFM2.5-8B-A1B-MLX-4bit", "mlx-community/Qwen3-0.6B-4bit"
+    ]
     static func model(id: String) -> CatalogModel? { all.first { $0.id == id } }
 }
 

@@ -2,10 +2,10 @@ import SwiftUI
 
 struct ModelLibraryView: View {
     @ObservedObject var store: WorkspaceStore
+    var onOpenPrivacy: () -> Void = {}
     @EnvironmentObject private var library: ModelLibrary
     @State private var search = ""
-    @State private var filter = "Alle"
-    @State private var family = "Alle Familien"
+    @State private var filter = "Empfohlen"
     @State private var selection: String?
     @State private var showingServer = false
     @State private var specs: MacSpecifications?
@@ -15,8 +15,7 @@ struct ModelLibraryView: View {
         CatalogModel.all.filter { model in
             let assessment = ModelAssessment.assess(model, on: mac)
             return (search.isEmpty || "\(model.title) \(model.id) \(model.family)".localizedCaseInsensitiveContains(search)) &&
-                (family == "Alle Familien" || family == model.family) &&
-                (filter != "Installiert" || library.installed[model.id] != nil) &&
+                (filter == "Installiert" ? library.installed[model.id] != nil : CatalogModel.recommendedIDs.contains(model.id)) &&
                 (filter != "Passend" || (model.nativeMLX && assessment.fit == .good))
         }.sorted { a, b in
             let left = ModelAssessment.assess(a, on: mac).score
@@ -44,12 +43,8 @@ struct ModelLibraryView: View {
             HStack(spacing: 0) {
                 VStack(spacing: 10) {
                     TextField("Modell suchen", text: $search).textFieldStyle(.roundedBorder)
-                    Picker("Ansicht", selection: $filter) { ForEach(["Alle", "Passend", "Installiert"], id: \.self) { Text($0) } }
+                    Picker("Ansicht", selection: $filter) { ForEach(["Empfohlen", "Passend", "Installiert"], id: \.self) { Text($0) } }
                         .pickerStyle(.segmented).labelsHidden()
-                    Picker("Familie", selection: $family) {
-                        Text("Alle Familien").tag("Alle Familien")
-                        ForEach(Array(Set(CatalogModel.all.map(\.family))).sorted(), id: \.self) { Text($0).tag($0) }
-                    }.labelsHidden()
                     List(selection: $selection) {
                         ForEach(models) { model in
                             modelRow(model).tag(Optional(model.id))
@@ -69,7 +64,6 @@ struct ModelLibraryView: View {
         }
         .onChange(of: search) { _, _ in updateSelection() }
         .onChange(of: filter) { _, _ in updateSelection() }
-        .onChange(of: family) { _, _ in updateSelection() }
         .onAppear {
             specs = .current(storage: library.rootURL)
             selection = models.first?.id
@@ -124,6 +118,12 @@ struct ModelLibraryView: View {
                 }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
                     .background(.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8))
                 actions(model, assessment: assessment)
+                if store.settings.offlineMode && model.nativeMLX && library.installed[model.id] == nil {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label("Downloads sind im Offline-Modus gesperrt.", systemImage: "wifi.slash")
+                        Button("Datenschutz öffnen") { onOpenPrivacy() }
+                    }.font(.callout).foregroundStyle(.secondary)
+                }
                 if library.downloadingID == model.id {
                     ProgressView(value: library.downloadProgress)
                     HStack {
@@ -145,7 +145,7 @@ struct ModelLibraryView: View {
                 Divider()
                 Grid(alignment: .leading, horizontalSpacing: 22, verticalSpacing: 12) {
                     detailRow("Laufzeit", value: model.nativeMLX ? "MLX in der App" : model.support == .server ? "Separater lokaler Server" : "Hier nicht eingebaut")
-                    detailRow("Prüfstand", value: model.tested ? "Textgenerierung auf diesem Mac geprüft" : "Nicht praktisch geprüft")
+                    detailRow("Prüfstand", value: model.tested ? "Lokale Textgenerierung geprüft" : "Noch nicht praktisch geprüft")
                     detailRow("Speicher", value: "Ab \(model.recommendedRAMGB) GB empfohlen")
                     detailRow("Format", value: model.quantization)
                     detailRow("Lizenz", value: model.license)
@@ -163,7 +163,7 @@ struct ModelLibraryView: View {
                 }
                 Link("Modellquelle und Lizenz ↗", destination: model.sourceURL).font(.system(size: 11))
                 Text(model.id).font(.system(size: 9, design: .monospaced)).foregroundStyle(.tertiary).textSelection(.enabled)
-                Text("Sortierung nach Laufzeit, Speicherreserve und Modellgröße relativ zum RAM; mit kuratierter Priorität für Textaufgaben. Keine Qualitätsbewertung. Katalogstand 20.10.2026.")
+                Text("Kuratierte Auswahl für lokale Textaufgaben, nach geschätzter Eignung sortiert. Keine Qualitätsrangliste. Katalogstand 02.11.2026.")
                     .font(.system(size: 10)).foregroundStyle(.secondary)
             }.padding(24).frame(maxWidth: .infinity, alignment: .leading)
         }

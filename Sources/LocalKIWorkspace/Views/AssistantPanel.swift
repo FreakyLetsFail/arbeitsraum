@@ -124,6 +124,11 @@ struct AssistantPanel: View {
     }
     private var composer: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if store.settings.runtime == .mlx && library.installed[store.settings.selectedMLXModelID] == nil {
+                Button { showingModels = true } label: {
+                    Label(library.installedCatalog.isEmpty ? "Modell installieren" : "Installiertes Modell auswählen", systemImage: "cpu")
+                }.buttonStyle(.bordered).help("Wähle in der Modellbibliothek ein installiertes Modell für den Chat.")
+            }
             Toggle(isOn: $includeDocument) {
                 Label("Projektdateien durchsuchen", systemImage: "doc.text.magnifyingglass")
             }.toggleStyle(.checkbox).font(.system(size: 11)).disabled(isGenerating)
@@ -232,11 +237,6 @@ struct AssistantPanel: View {
                     if !message.text.isEmpty {
                         HStack(spacing: 12) {
                             Button("Kopieren") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(message.text, forType: .string) }
-                            Button("Bearbeiten") { editingMessageID = message.id }
-                            Button("Merken") { memoryDraft = String(message.text.prefix(1_000)) }
-                            Button("Als Vorlage speichern") { prepareTemplate(from: message) }
-                                .disabled(message.status != .complete)
-                                .help("Antwort als lokale, wiederverwendbare Vorlage speichern")
                             if project.allFiles.first(where: { $0.id == (activeFileID ?? project.id) })?.kind == .document {
                                 Button("Einfügen") {
                                     let id = activeFileID ?? project.id
@@ -246,6 +246,12 @@ struct AssistantPanel: View {
                                 }
                                     .disabled(message.status != .complete).help("Am Dokumentende einfügen")
                             }
+                            Menu("Mehr") {
+                                Button("Bearbeiten") { editingMessageID = message.id }
+                                Button("Als Projektnotiz merken") { memoryDraft = String(message.text.prefix(1_000)) }
+                                Button("Als Vorlage speichern") { prepareTemplate(from: message) }
+                                    .disabled(message.status != .complete)
+                            }.menuStyle(.borderlessButton).fixedSize()
                         }.buttonStyle(.plain).font(.system(size: 10)).foregroundStyle(.secondary)
                     }
                 }

@@ -42,7 +42,8 @@ struct DocumentEditor: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 4) {
+            ScrollView(.horizontal, showsIndicators: true) {
+              HStack(spacing: 8) {
                 Button("Text") { formatting.send(.body) }.help("Absatz als normalen Text formatieren")
                 Button("Überschrift") { formatting.send(.heading) }
                 Divider().frame(height: 16).padding(.horizontal, 6)
@@ -77,12 +78,12 @@ struct DocumentEditor: View {
                     .menuStyle(.borderlessButton).help("Absatzausrichtung")
                 Button { formatting.send(.bullet) } label: { Image(systemName: "list.bullet") }
                     .help("Aufzählungspunkt am Absatzanfang einfügen").accessibilityLabel("Aufzählungspunkt")
-                Spacer()
                 Button { formatting.send(.print) } label: { Image(systemName: "printer") }
                     .help("Drucken oder als PDF sichern").accessibilityLabel("Drucken oder als PDF sichern")
                 Menu("\(zoom) %") {
                     ForEach([85, 100, 115, 130], id: \.self) { value in Button("\(value) %") { zoom = value } }
                 }.menuStyle(.borderlessButton).fixedSize()
+              }.fixedSize(horizontal: true, vertical: false)
             }
             .buttonStyle(.borderless).font(.system(size: 12))
             .padding(.horizontal, 18).frame(height: 42)

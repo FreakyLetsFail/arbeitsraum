@@ -65,13 +65,13 @@ struct SpreadsheetEditor: View {
     }
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
+            ScrollView(.horizontal, showsIndicators: true) {
+              HStack(spacing: 12) {
                 Text(selected.map { "\(SpreadsheetData.columnName($0.column))\($0.row + 1)" } ?? "—")
                     .font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary).frame(width: 42)
                 Divider().frame(height: 17)
                 TextField("Zelle auswählen", text: cellValue).textFieldStyle(.plain)
-                    .disabled(selected == nil).accessibilityLabel("Zellinhalt")
-                Spacer(minLength: 8)
+                    .frame(width: 180).disabled(selected == nil).accessibilityLabel("Zellinhalt")
                 Button { project.tableRows.append(Array(repeating: "", count: columns)) } label: { Label("Zeile hinzufügen", systemImage: "plus") }
                     .help("Zeile hinzufügen")
                 Button {
@@ -88,6 +88,7 @@ struct SpreadsheetEditor: View {
                     }
                 } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).fixedSize()
                     .accessibilityLabel("Tabellenaktionen")
+              }.fixedSize(horizontal: true, vertical: false)
             }
             .font(.system(size: 12)).buttonStyle(.borderless).padding(.horizontal, 16).frame(height: 42)
             .foregroundStyle(WorkspacePalette.ink)

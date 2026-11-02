@@ -53,8 +53,8 @@ struct WorkspaceRootView: View {
                         .frame(width: 30, height: 30)
                         .background(WorkspacePalette.clay, in: Circle())
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("Arbeitsraum").font(.system(size: 16, weight: .medium, design: .serif))
-                        Text("DEIN LOKALER PLATZ").font(.system(size: 8, weight: .semibold)).tracking(1.1)
+                        Text("Aurora").font(.system(size: 16, weight: .medium, design: .serif))
+                        Text("Dein lokaler Arbeitsbereich").font(.system(size: 10))
                             .foregroundStyle(WorkspacePalette.muted)
                     }
                     Spacer()
@@ -92,7 +92,7 @@ struct WorkspaceRootView: View {
                 }.buttonStyle(.plain).foregroundStyle(WorkspacePalette.ink)
             }
             .background(WorkspacePalette.sidebar)
-            .navigationSplitViewColumnWidth(min: 190, ideal: 220, max: 280)
+            .navigationSplitViewColumnWidth(min: 190, ideal: 240, max: 300)
         } detail: {
             if let project = store.projects.first(where: { $0.id == selectedProjectID }) {
                 WorkspaceEditor(project: binding(for: project), activeID: fileSelection(for: project.id), store: store, onCreated: { selectedProjectID = $0 })
@@ -218,13 +218,13 @@ struct WorkspaceOverview: View {
         VStack(alignment: .leading, spacing: 22) {
             HStack(alignment: .center, spacing: 20) {
                 VStack(alignment: .leading, spacing: 7) {
-                    Label("LOKAL & OFFLINE", systemImage: "leaf")
+                    Label("DEIN LOKALER ARBEITSPLATZ", systemImage: "leaf")
                         .font(.system(size: 9, weight: .semibold)).tracking(1.1)
                         .foregroundStyle(WorkspacePalette.sage)
-                    Text("Deine Ideen haben hier Platz.")
+                    Text("Deine Projekte")
                         .font(.system(size: 30, weight: .regular, design: .serif))
                         .foregroundStyle(WorkspacePalette.ink)
-                    Text("Dokumente, Tabellen und lokale KI – ganz in deinem Tempo.")
+                    Text("Dokumente, Tabellen und Chat an einem Ort.")
                         .font(.system(size: 13)).foregroundStyle(WorkspacePalette.muted)
                 }
                 Spacer()
@@ -263,7 +263,7 @@ struct WorkspaceOverview: View {
                                         .background(WorkspacePalette.sageWash, in: RoundedRectangle(cornerRadius: 12))
                                     VStack(alignment: .leading, spacing: 5) {
                                         Text(project.title).font(.system(size: 14, weight: .medium)).foregroundStyle(WorkspacePalette.ink)
-                                        Text("\(project.allFiles.count) Dateien")
+                                        Text(project.allFiles.count == 1 ? "1 Datei" : "\(project.allFiles.count) Dateien")
                                             .font(.system(size: 11)).foregroundStyle(WorkspacePalette.muted)
                                     }
                                     Spacer()

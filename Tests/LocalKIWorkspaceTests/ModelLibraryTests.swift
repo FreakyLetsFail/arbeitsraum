@@ -53,6 +53,8 @@ final class ModelLibraryTests: XCTestCase {
     }
     func testCatalogHasUniquePinnedModelsAndNoCloudTags() throws {
         XCTAssertGreaterThanOrEqual(CatalogModel.all.count, 26)
+        XCTAssertEqual(CatalogModel.recommendedIDs.count, 10)
+        XCTAssertTrue(CatalogModel.recommendedIDs.allSatisfy { CatalogModel.model(id: $0)?.nativeMLX == true })
         XCTAssertEqual(Set(CatalogModel.all.map(\.id)).count, CatalogModel.all.count)
         for model in CatalogModel.all {
             XCTAssertFalse(LoopbackOpenAIEngine.isCloudModel(model.id))
