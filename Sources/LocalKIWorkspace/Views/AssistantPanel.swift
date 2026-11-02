@@ -29,15 +29,24 @@ struct AssistantPanel: View {
     }
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Chat").font(.system(size: 13, weight: .semibold))
+            HStack(spacing: 9) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(WorkspacePalette.sage)
+                    .frame(width: 28, height: 28)
+                    .background(WorkspacePalette.sageWash, in: RoundedRectangle(cornerRadius: 9))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Chat").font(.system(size: 15, weight: .medium, design: .serif))
+                    Text("LOKALE BEGLEITUNG").font(.system(size: 8, weight: .semibold)).tracking(0.9)
+                        .foregroundStyle(WorkspacePalette.muted)
+                }
                 Spacer()
                 Button {
                     messages = []; errorMessage = nil; persist()
                 } label: { Image(systemName: "square.and.pencil") }
                     .buttonStyle(.plain).disabled(isGenerating).help("Neue Unterhaltung").accessibilityLabel("Neue Unterhaltung")
-            }.padding(.horizontal, 18).frame(height: 42)
-            Divider()
+            }.padding(.horizontal, 15).frame(height: 50).background(WorkspacePalette.toolbar)
+            Rectangle().fill(WorkspacePalette.border).frame(height: 1)
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
@@ -70,7 +79,7 @@ struct AssistantPanel: View {
             }
             composer
         }
-        .background(Color(nsColor: .controlBackgroundColor))
+        .background(WorkspacePalette.canvas)
         .onAppear { messages = project.chatMessages ?? [] }
         .onChange(of: question) { _, _ in exactContextTokens = nil }
         .onChange(of: includeDocument) { _, _ in exactContextTokens = nil }
@@ -175,8 +184,9 @@ struct AssistantPanel: View {
                     }
                 }.buttonStyle(.borderless)
             }
-            .padding(12).background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 10))
-            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.primary.opacity(0.13)))
+            .padding(12).background(WorkspacePalette.paper, in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(WorkspacePalette.border))
+            .shadow(color: WorkspacePalette.ink.opacity(0.035), radius: 8, x: 0, y: 3)
             HStack {
                 Text(store.settings.runtime == .mlx ? "Auf diesem Mac" : "Lokaler Server")
                 Spacer()
@@ -191,7 +201,9 @@ struct AssistantPanel: View {
     private func suggestion(_ title: String, prompt: String) -> some View {
         Button { question = prompt } label: {
             HStack { Text(title); Spacer(); Image(systemName: "arrow.up.left").font(.system(size: 9)) }
-                .font(.system(size: 12)).padding(10).background(.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 6))
+                .font(.system(size: 12)).foregroundStyle(WorkspacePalette.ink)
+                .padding(10).background(WorkspacePalette.paper, in: RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(WorkspacePalette.border))
         }.buttonStyle(.plain)
     }
     @ViewBuilder private func messageView(_ message: WorkspaceMessage) -> some View {
@@ -203,7 +215,7 @@ struct AssistantPanel: View {
                     if let ids = message.attachmentIDs, !ids.isEmpty {
                         Text(project.allFiles.filter { ids.contains($0.id) }.map(\.name).joined(separator: ", ")).font(.caption).foregroundStyle(.secondary)
                     }
-                }.padding(12).background(.primary.opacity(0.055), in: RoundedRectangle(cornerRadius: 10))
+                }.padding(12).background(WorkspacePalette.sageWash, in: RoundedRectangle(cornerRadius: 11))
             }
         } else {
             VStack(alignment: .leading, spacing: 10) {
@@ -250,6 +262,8 @@ struct AssistantPanel: View {
                     }.font(.caption).foregroundStyle(.secondary)
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
+                .padding(13).background(WorkspacePalette.paper, in: RoundedRectangle(cornerRadius: 11))
+                .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(WorkspacePalette.border.opacity(0.8)))
         }
     }
     private func persist() { project.chatMessages = messages }

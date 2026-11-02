@@ -152,22 +152,22 @@ struct TemplateLibraryView: View {
             HStack(spacing: 10) {
                 Image(systemName: template.kind.symbol)
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+                    .foregroundStyle(isSelected ? WorkspacePalette.sage : WorkspacePalette.muted)
                     .frame(width: 28, height: 28)
-                    .background(isSelected ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 7))
+                    .background(isSelected ? WorkspacePalette.sageWash : WorkspacePalette.toolbar, in: RoundedRectangle(cornerRadius: 7))
                 VStack(alignment: .leading, spacing: 3) {
                     Text(template.name.isEmpty ? "Unbenannte Vorlage" : template.name)
                         .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
                         .lineLimit(1)
                     Text(template.kind.title)
-                        .font(.system(size: 10)).foregroundStyle(.secondary)
+                        .font(.system(size: 10)).foregroundStyle(WorkspacePalette.muted)
                 }
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 7)
             .contentShape(RoundedRectangle(cornerRadius: 8))
-            .background(isSelected ? Color.accentColor.opacity(0.09) : .clear, in: RoundedRectangle(cornerRadius: 8))
+            .background(isSelected ? WorkspacePalette.sageWash : .clear, in: RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
     }

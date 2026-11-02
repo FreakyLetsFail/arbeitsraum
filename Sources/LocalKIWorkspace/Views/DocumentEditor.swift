@@ -86,20 +86,26 @@ struct DocumentEditor: View {
             }
             .buttonStyle(.borderless).font(.system(size: 12))
             .padding(.horizontal, 18).frame(height: 42)
-            .background(Color(nsColor: .controlBackgroundColor))
-            Divider()
+            .foregroundStyle(WorkspacePalette.ink)
+            .background(WorkspacePalette.toolbar)
+            Rectangle().fill(WorkspacePalette.border).frame(height: 1)
             NativeDocumentEditor(text: $project.documentText, rtf: $project.documentRTF, formatting: formatting, zoom: CGFloat(zoom) / 100)
-                .padding(.horizontal, 28).padding(.top, 24).padding(.bottom, 18)
-                .background(Color(nsColor: .underPageBackgroundColor))
+                .frame(maxWidth: 790)
+                .padding(.horizontal, 30).padding(.vertical, 24)
+                .background(WorkspacePalette.paper, in: RoundedRectangle(cornerRadius: 5))
+                .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(WorkspacePalette.border.opacity(0.8)))
+                .shadow(color: WorkspacePalette.ink.opacity(0.07), radius: 14, x: 0, y: 5)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .background(WorkspacePalette.canvas)
             HStack {
                 Text("\(wordCount) Wörter")
                 Spacer()
                 if !project.audioAssets.isEmpty { Label("\(project.audioAssets.count) Audio", systemImage: "waveform") }
-                Text("Gespeichert").foregroundStyle(.tertiary)
+                Label("Gespeichert", systemImage: "checkmark.circle.fill").foregroundStyle(WorkspacePalette.sage)
             }
-            .font(.system(size: 11)).foregroundStyle(.secondary)
+            .font(.system(size: 10)).foregroundStyle(WorkspacePalette.muted)
             .padding(.horizontal, 20).frame(height: 28)
-            .background(Color(nsColor: .controlBackgroundColor))
+            .background(WorkspacePalette.toolbar)
         }
     }
 }
@@ -116,10 +122,12 @@ struct NativeDocumentEditor: NSViewRepresentable {
         scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
         scroll.drawsBackground = true
-        scroll.backgroundColor = .textBackgroundColor
+        scroll.backgroundColor = WorkspacePalette.paperNS
         scroll.borderType = .noBorder
         let editor = NSTextView(frame: scroll.contentView.bounds)
         editor.isRichText = true
+        editor.drawsBackground = true
+        editor.backgroundColor = WorkspacePalette.paperNS
         editor.usesAdaptiveColorMappingForDarkAppearance = true
         editor.importsGraphics = false
         editor.allowsImageEditing = false

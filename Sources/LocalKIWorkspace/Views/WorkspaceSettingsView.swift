@@ -7,12 +7,13 @@ struct WorkspaceSettingsView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Einstellungen").font(.system(size: 20, weight: .semibold))
+                Text("Einstellungen").font(.system(size: 20, weight: .medium, design: .serif))
+                    .foregroundStyle(WorkspacePalette.ink)
                 Spacer()
                 Button("Fertig") { dismiss() }.buttonStyle(.borderedProminent)
             }
-            .padding(18)
-            Divider()
+            .padding(18).background(WorkspacePalette.toolbar)
+            Rectangle().fill(WorkspacePalette.border).frame(height: 1)
             TabView {
                 ModelLibraryView(store: store)
                     .tabItem { Label("Modelle", systemImage: "cpu") }
@@ -24,6 +25,8 @@ struct WorkspaceSettingsView: View {
             .padding(14)
         }
         .frame(width: 980, height: 720)
+        .background(WorkspacePalette.canvas)
+        .tint(WorkspacePalette.sage)
     }
 }
 
@@ -139,7 +142,7 @@ private struct PrivacySettingsView: View {
 
     private func privacyItem(_ title: String, _ detail: String, symbol: String) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: symbol).foregroundStyle(.green).frame(width: 24)
+            Image(systemName: symbol).foregroundStyle(WorkspacePalette.sage).frame(width: 24)
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.system(size: 12, weight: .semibold))
                 Text(detail).font(.system(size: 11)).foregroundStyle(.secondary)

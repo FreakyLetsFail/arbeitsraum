@@ -2,6 +2,37 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
+enum WorkspacePalette {
+    static let canvas = color(light: 0xF6F0E7, dark: 0x2D2924)
+    static let sidebar = color(light: 0xEEE7DA, dark: 0x332E28)
+    static let paperNS = nativeColor(light: 0xFFFCF6, dark: 0x3C352E)
+    static let paper = Color(nsColor: paperNS)
+    static let toolbar = color(light: 0xF0E9DE, dark: 0x342F29)
+    static let border = color(light: 0xDED5C7, dark: 0x51483E)
+    static let ink = color(light: 0x49423B, dark: 0xF0E5D8)
+    static let muted = color(light: 0x766E64, dark: 0xC4B5A4)
+    static let sage = color(light: 0x68795F, dark: 0xA9B99E)
+    static let sageWash = color(light: 0xE1E8DA, dark: 0x444C3F)
+    static let clay = color(light: 0xA96750, dark: 0xD09379)
+    static let warmWash = color(light: 0xF3E4D7, dark: 0x4A3B31)
+
+    private static func color(light: UInt32, dark: UInt32) -> Color {
+        Color(nsColor: nativeColor(light: light, dark: dark))
+    }
+
+    private static func nativeColor(light: UInt32, dark: UInt32) -> NSColor {
+        NSColor(name: nil) { appearance in
+            let value = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
+            return NSColor(
+                calibratedRed: CGFloat((value >> 16) & 0xFF) / 255,
+                green: CGFloat((value >> 8) & 0xFF) / 255,
+                blue: CGFloat(value & 0xFF) / 255,
+                alpha: 1
+            )
+        }
+    }
+}
+
 struct WorkspaceRootView: View {
     @ObservedObject var store: WorkspaceStore
     @State private var selectedProjectID: UUID?
@@ -16,31 +47,51 @@ struct WorkspaceRootView: View {
         NavigationSplitView {
             VStack(spacing: 0) {
                 HStack {
-                    Text("Arbeitsraum").font(.system(size: 17, weight: .semibold))
+                    Image(systemName: "sun.max.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 30, height: 30)
+                        .background(WorkspacePalette.clay, in: Circle())
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Arbeitsraum").font(.system(size: 16, weight: .medium, design: .serif))
+                        Text("DEIN LOKALER PLATZ").font(.system(size: 8, weight: .semibold)).tracking(1.1)
+                            .foregroundStyle(WorkspacePalette.muted)
+                    }
                     Spacer()
                     Button { create(.document) } label: { Image(systemName: "square.and.pencil") }
                         .buttonStyle(.plain).help("Neues Projekt · ⌘N").accessibilityLabel("Neues Projekt")
                         .keyboardShortcut("n", modifiers: .command)
-                }.padding(18)
-                TextField("Projekte suchen", text: $search).textFieldStyle(.roundedBorder).padding(.horizontal, 12).padding(.bottom, 12)
+                }.padding(.horizontal, 16).padding(.top, 19).padding(.bottom, 17)
+                TextField("Projekte suchen", text: $search)
+                    .textFieldStyle(.plain)
+                    .padding(9)
+                    .background(WorkspacePalette.paper, in: RoundedRectangle(cornerRadius: 9))
+                    .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(WorkspacePalette.border))
+                    .padding(.horizontal, 12).padding(.bottom, 14)
                 Button { selectedProjectID = nil } label: {
-                    HStack { Label("Alle Projekte", systemImage: "folder"); Spacer() }
-                        .padding(10).contentShape(Rectangle())
-                        .background(selectedProjectID == nil ? Color.accentColor.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 7))
-                }.buttonStyle(.plain).padding(.horizontal, 10).accessibilityIdentifier("all-projects")
+                    HStack { Label("Alle Projekte", systemImage: "square.grid.2x2"); Spacer() }
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(selectedProjectID == nil ? WorkspacePalette.ink : WorkspacePalette.muted)
+                        .padding(.horizontal, 10).padding(.vertical, 9).contentShape(Rectangle())
+                        .background(selectedProjectID == nil ? WorkspacePalette.sageWash : .clear, in: RoundedRectangle(cornerRadius: 8))
+                }.buttonStyle(.plain).padding(.horizontal, 10).padding(.bottom, 8).accessibilityIdentifier("all-projects")
                 List {
                     Section("Projekte") {
                         ForEach(visibleProjects) { project in
                             projectRow(project)
                         }
                     }
-                }.listStyle(.sidebar)
-                Divider()
+                }
+                .listStyle(.sidebar)
+                .scrollContentBackground(.hidden)
+                .background(.clear)
+                Rectangle().fill(WorkspacePalette.border).frame(height: 1)
                 Button { showingSettings = true } label: {
-                    HStack { Image(systemName: "slider.horizontal.3"); Text("Modelle & Einstellungen"); Spacer() }
-                        .font(.system(size: 12)).padding(15).contentShape(Rectangle())
-                }.buttonStyle(.plain).foregroundStyle(.secondary)
+                    HStack { Image(systemName: "slider.horizontal.3").foregroundStyle(WorkspacePalette.sage); Text("Modelle & Einstellungen"); Spacer() }
+                        .font(.system(size: 11, weight: .medium)).padding(.horizontal, 15).padding(.vertical, 14).contentShape(Rectangle())
+                }.buttonStyle(.plain).foregroundStyle(WorkspacePalette.ink)
             }
+            .background(WorkspacePalette.sidebar)
             .navigationSplitViewColumnWidth(min: 190, ideal: 220, max: 280)
         } detail: {
             if let project = store.projects.first(where: { $0.id == selectedProjectID }) {
@@ -57,6 +108,8 @@ struct WorkspaceRootView: View {
         .alert("Speichern fehlgeschlagen", isPresented: Binding(get: { store.persistenceError != nil }, set: { if !$0 { store.clearPersistenceError() } })) {
             Button("OK", role: .cancel) { store.clearPersistenceError() }
         } message: { Text(store.persistenceError ?? "") }
+        .tint(WorkspacePalette.sage)
+        .background(WorkspacePalette.canvas)
     }
     private func create(_ kind: WorkspaceKind) { newKind = kind; showingNewProject = true }
     private var visibleProjects: [WorkspaceProject] {
@@ -93,8 +146,9 @@ struct WorkspaceRootView: View {
                     .padding(.horizontal, 8)
                     .frame(height: 30)
                     .contentShape(Rectangle())
-                    .foregroundStyle(selectedProject ? Color.white : Color.primary)
-                    .background(selectedProject ? Color.accentColor : Color.clear, in: RoundedRectangle(cornerRadius: 7))
+                    .font(.system(size: 12, weight: selectedProject ? .medium : .regular))
+                    .foregroundStyle(WorkspacePalette.ink)
+                    .background(selectedProject ? WorkspacePalette.sageWash : Color.clear, in: RoundedRectangle(cornerRadius: 8))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Projekt \(project.title)")
@@ -114,8 +168,8 @@ struct WorkspaceRootView: View {
                         .padding(.trailing, 8)
                         .frame(height: 27)
                         .contentShape(Rectangle())
-                        .foregroundStyle(selectedFile ? Color.white : Color.secondary)
-                        .background(selectedFile ? Color.accentColor.opacity(0.82) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+                        .foregroundStyle(selectedFile ? WorkspacePalette.ink : WorkspacePalette.muted)
+                        .background(selectedFile ? WorkspacePalette.warmWash : Color.clear, in: RoundedRectangle(cornerRadius: 7))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Datei \(file.name) in \(project.title) öffnen")
@@ -161,24 +215,32 @@ struct WorkspaceOverview: View {
     let onSelect: (UUID) -> Void
     @State private var filter: WorkspaceKind?
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Projekte").font(.system(size: 30, weight: .semibold))
-                    Text("Dokumente und Tabellen").font(.system(size: 13)).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 22) {
+            HStack(alignment: .center, spacing: 20) {
+                VStack(alignment: .leading, spacing: 7) {
+                    Label("LOKAL & OFFLINE", systemImage: "leaf")
+                        .font(.system(size: 9, weight: .semibold)).tracking(1.1)
+                        .foregroundStyle(WorkspacePalette.sage)
+                    Text("Deine Ideen haben hier Platz.")
+                        .font(.system(size: 30, weight: .regular, design: .serif))
+                        .foregroundStyle(WorkspacePalette.ink)
+                    Text("Dokumente, Tabellen und lokale KI – ganz in deinem Tempo.")
+                        .font(.system(size: 13)).foregroundStyle(WorkspacePalette.muted)
                 }
                 Spacer()
                 Menu {
                     Button("Dokument") { onCreate(.document) }
                     Button("Tabelle") { onCreate(.table) }
-                } label: { Label("Neu", systemImage: "plus") }.menuStyle(.borderlessButton).fixedSize()
+                } label: { Label("Neues Projekt", systemImage: "plus") }
+                    .menuStyle(.borderlessButton).fixedSize().buttonStyle(.borderedProminent)
             }
             HStack(spacing: 8) {
                 filterButton("Alle", value: nil)
                 filterButton("Dokumente", value: .document)
                 filterButton("Tabellen", value: .table)
                 Spacer()
-                Text("Auf diesem Mac gespeichert").font(.system(size: 11)).foregroundStyle(.tertiary)
+                Label("Auf diesem Mac gespeichert", systemImage: "internaldrive")
+                    .font(.system(size: 10)).foregroundStyle(WorkspacePalette.muted)
             }
             if store.projects.isEmpty {
                 ContentUnavailableView {
@@ -192,34 +254,41 @@ struct WorkspaceOverview: View {
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 0) {
+                    LazyVStack(spacing: 9) {
                         ForEach(store.projects.filter { filter == nil || $0.kind == filter }) { project in
                             Button { onSelect(project.id) } label: {
-                                HStack(spacing: 16) {
-                                    Image(systemName: project.kind.symbol).font(.system(size: 21, weight: .light)).foregroundStyle(.secondary).frame(width: 30)
+                                HStack(spacing: 14) {
+                                    Image(systemName: project.kind.symbol).font(.system(size: 17, weight: .regular))
+                                        .foregroundStyle(WorkspacePalette.sage).frame(width: 42, height: 42)
+                                        .background(WorkspacePalette.sageWash, in: RoundedRectangle(cornerRadius: 12))
                                     VStack(alignment: .leading, spacing: 5) {
-                                        Text(project.title).font(.system(size: 14, weight: .medium)).foregroundStyle(.primary)
-                                        Text("\(project.allFiles.count) Dateien").font(.system(size: 11)).foregroundStyle(.secondary)
+                                        Text(project.title).font(.system(size: 14, weight: .medium)).foregroundStyle(WorkspacePalette.ink)
+                                        Text("\(project.allFiles.count) Dateien")
+                                            .font(.system(size: 11)).foregroundStyle(WorkspacePalette.muted)
                                     }
                                     Spacer()
-                                    Text(project.modifiedAt.formatted(date: .abbreviated, time: .shortened)).font(.system(size: 11)).foregroundStyle(.secondary)
-                                    Image(systemName: "chevron.right").font(.system(size: 10)).foregroundStyle(.tertiary)
-                                }.padding(.vertical, 18).padding(.horizontal, 8).contentShape(Rectangle())
+                                    Text(project.modifiedAt.formatted(date: .abbreviated, time: .shortened))
+                                        .font(.system(size: 10)).foregroundStyle(WorkspacePalette.muted)
+                                    Image(systemName: "chevron.right").font(.system(size: 9, weight: .semibold)).foregroundStyle(WorkspacePalette.muted.opacity(0.7))
+                                }
+                                .padding(.vertical, 13).padding(.horizontal, 14).contentShape(Rectangle())
+                                .background(WorkspacePalette.paper, in: RoundedRectangle(cornerRadius: 13))
+                                .overlay(RoundedRectangle(cornerRadius: 13).strokeBorder(WorkspacePalette.border.opacity(0.8)))
+                                .shadow(color: WorkspacePalette.ink.opacity(0.035), radius: 9, x: 0, y: 3)
                             }.buttonStyle(.plain)
-                            Divider()
                         }
                     }
                 }
             }
-        }.padding(32).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color(nsColor: .textBackgroundColor))
+        }.padding(34).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(WorkspacePalette.canvas)
     }
     private func filterButton(_ title: String, value: WorkspaceKind?) -> some View {
         Button { filter = value } label: {
             Text(title).font(.system(size: 12, weight: filter == value ? .medium : .regular))
                 .padding(.horizontal, 12).padding(.vertical, 6)
-                .background(filter == value ? Color.primary.opacity(0.07) : .clear, in: Capsule())
-        }.buttonStyle(.plain).foregroundStyle(filter == value ? .primary : .secondary)
+                .background(filter == value ? WorkspacePalette.sageWash : .clear, in: Capsule())
+        }.buttonStyle(.plain).foregroundStyle(filter == value ? WorkspacePalette.ink : WorkspacePalette.muted)
     }
 }
 
@@ -305,7 +374,8 @@ struct WorkspaceEditor: View {
                         ForEach(project.allFiles) { file in
                             Button { activeID = file.id } label: {
                                 Label(file.name, systemImage: file.kind.symbol).lineLimit(1).padding(.horizontal, 12).padding(.vertical, 8)
-                                    .background(file.id == fileID ? Color.accentColor.opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+                                    .background(file.id == fileID ? WorkspacePalette.sageWash : Color.clear, in: RoundedRectangle(cornerRadius: 8))
+                                    .foregroundStyle(file.id == fileID ? WorkspacePalette.ink : WorkspacePalette.muted)
                             }.buttonStyle(.plain).contextMenu {
                                 if file.id != project.id { Button("Aus Projekt entfernen", role: .destructive) { deletingID = file.id } }
                             }
@@ -319,22 +389,24 @@ struct WorkspaceEditor: View {
                     Divider()
                     Button("Dateien hinzufügen …") { showingImport = true }
                 } label: { Image(systemName: "plus") }.menuStyle(.borderlessButton).fixedSize().accessibilityLabel("Datei hinzufügen").disabled(importing)
-            }.font(.system(size: 12)).padding(.horizontal, 12).padding(.vertical, 5)
-            Divider()
+            }.font(.system(size: 12)).padding(.horizontal, 14).padding(.vertical, 7)
+                .background(WorkspacePalette.toolbar)
+            Rectangle().fill(WorkspacePalette.border).frame(height: 1)
             HSplitView {
                 VStack(spacing: 0) {
                     HStack {
+                        Image(systemName: activeFile.kind.symbol).foregroundStyle(WorkspacePalette.sage)
                         TextField("Dateiname", text: content.title).textFieldStyle(.plain).font(.system(size: 12, weight: .medium))
                         Spacer()
                         if activeFile.importNote != nil { Image(systemName: "info.circle").help(activeFile.importNote ?? "") }
-                    }.padding(.horizontal, 18).frame(height: 30)
-                    Divider()
+                    }.padding(.horizontal, 18).frame(height: 38).background(WorkspacePalette.toolbar)
+                    Rectangle().fill(WorkspacePalette.border).frame(height: 1)
                     Group {
                         if activeFile.kind == .reference { ReferenceFileView(file: activeFile, url: store.originalFileURL(activeFile)) }
                         else if activeFile.kind == .document { DocumentEditor(project: content) }
                         else { SpreadsheetEditor(project: content) }
                     }.id(fileID)
-                }.frame(minWidth: 380, maxWidth: .infinity, maxHeight: .infinity)
+                }.frame(minWidth: 380, maxWidth: .infinity, maxHeight: .infinity).background(WorkspacePalette.canvas)
                 if showingChat {
                     AssistantPanel(project: $project, store: store, activeFileID: fileID)
                         .frame(minWidth: 300, idealWidth: 370, maxWidth: 540, maxHeight: .infinity)
@@ -371,6 +443,7 @@ struct WorkspaceEditor: View {
                     .accessibilityLabel(showingChat ? "Chat ausblenden" : "Chat einblenden")
             }
         }
+        .tint(WorkspacePalette.sage)
         .sheet(isPresented: $showingAudio) { AudioImportView(project: $project, store: store, onCreated: onCreated, destinationFileID: activeFile.kind == .document ? fileID : nil) }
         .sheet(isPresented: $showingPrompt) { PromptEditorSheet(prompt: $project.systemPrompt, onSave: { store.updateProject(project) }) }
         .sheet(isPresented: $showingMemory) { ProjectMemoryView(project: $project) }
