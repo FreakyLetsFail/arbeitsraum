@@ -1,7 +1,15 @@
+import AppKit
 import XCTest
 @testable import Lokal_KI_Workspace
 
 final class WorkspaceTests: XCTestCase {
+    func testApplicationIconIsBundledAtFullResolution() throws {
+        XCTAssertEqual(Bundle.main.object(forInfoDictionaryKey: "CFBundleIconFile") as? String, "AuroraIcon")
+        let url = try XCTUnwrap(Bundle.main.url(forResource: "AuroraIcon", withExtension: "icns"))
+        let image = try XCTUnwrap(NSImage(contentsOf: url))
+        XCTAssertTrue(image.representations.contains { $0.pixelsWide >= 1024 && $0.pixelsHigh >= 1024 })
+    }
+
     func testLocalModelEndpointRejectsNonLoopbackHosts() {
         XCTAssertTrue(LoopbackOpenAIEngine.isAllowedEndpoint("http://127.0.0.1:11434/v1"))
         XCTAssertTrue(LoopbackOpenAIEngine.isAllowedEndpoint("http://localhost:8000/v1"))
@@ -31,5 +39,19 @@ final class WorkspaceTests: XCTestCase {
         let project = WorkspaceProject(title: "Übersicht", kind: .table, tableRows: [["Datum", "Bereich", "Notiz", "Status"]])
         XCTAssertEqual(project.tableRows.count, 1)
         XCTAssertEqual(project.tableRows[0].count, 4)
+    }
+
+    @MainActor
+    func testOpeningPrimaryFileWithoutChangesDoesNotRewriteProject() throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = WorkspaceStore(rootURL: root)
+        var project = store.createProject(title: "Test", kind: .document, template: nil)
+        let original = project
+        let content = project.content(for: project.id)
+        project.updateContent(content, fileID: project.id)
+        XCTAssertEqual(project, original)
+        store.updateProject(project)
+        XCTAssertEqual(store.projects.first, original)
     }
 }

@@ -42,6 +42,14 @@ final class ProjectFilesTests: XCTestCase {
         let bounded = ProjectKnowledge.sources(project: first, question: "Prüfkennung", includeProject: true, attachments: [], budget: 25)
         XCTAssertLessThanOrEqual(bounded.reduce(0) { $0 + $1.excerpt.count }, 25)
     }
+    func testRetrievalLimitsEvenManyExplicitAttachments() {
+        var project = WorkspaceProject(title: "Test", kind: .document)
+        let files = (0..<12).map { WorkspaceFile(name: "Datei \($0)", kind: .document, text: "Inhalt \($0)") }
+        project.files = files
+        let sources = ProjectKnowledge.sources(project: project, question: "Inhalt", includeProject: false, attachments: Set(files.map(\.id)))
+        XCTAssertEqual(sources.count, 8)
+        XCTAssertEqual(Set(sources.map(\.fileID)).count, 8)
+    }
     @MainActor
     func testDOCXRoundTripKeepsTextAndBold() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -120,5 +128,28 @@ final class ProjectFilesTests: XCTestCase {
         let original = try XCTUnwrap(store.originalFileURL(saved))
         XCTAssertTrue(FileManager.default.fileExists(atPath: original.path))
         XCTAssertNotEqual(original, source)
+    }
+    func testSummaryCoverageReportsOmissionsAndPreservesDocumentOrder() {
+        let text = (0..<12).map { "Abschnitt \($0): " + String(repeating: "Notiz ", count: 150) }.joined(separator: "\n")
+        let project = WorkspaceProject(title: "Fiktive Notizen", kind: .document, documentText: text)
+        let sources = ProjectKnowledge.sources(project: project, question: "Bitte zusammenfassen", includeProject: true, attachments: [])
+        let coverage = ProjectKnowledge.coverage(project: project, includeProject: true, attachments: [], sources: sources)
+        XCTAssertTrue(coverage.isIncomplete)
+        XCTAssertEqual(coverage.incompleteFiles, [project.primaryName])
+        XCTAssertEqual(sources.first?.id, "\(project.id.uuidString)-0")
+        XCTAssertEqual(sources.dropFirst().first?.id, "\(project.id.uuidString)-1")
+
+        let short = WorkspaceProject(title: "Kurz", kind: .document, documentText: "Eine vollständige Notiz.")
+        let complete = ProjectKnowledge.sources(project: short, question: "Zusammenfassen", includeProject: true, attachments: [])
+        XCTAssertFalse(ProjectKnowledge.coverage(project: short, includeProject: true, attachments: [], sources: complete).isIncomplete)
+    }
+
+    func testUnreadableAttachedReferenceIsFlagged() {
+        var project = WorkspaceProject(title: "Import", kind: .document)
+        let image = WorkspaceFile(name: "Scan ohne Text", kind: .reference, text: "")
+        project.files = [image]
+        let selected: Set<UUID> = [image.id]
+        let coverage = ProjectKnowledge.coverage(project: project, includeProject: false, attachments: selected, sources: [])
+        XCTAssertEqual(coverage.unreadableFiles, ["Scan ohne Text"])
     }
 }

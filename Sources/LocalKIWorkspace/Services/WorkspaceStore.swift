@@ -48,6 +48,7 @@ final class WorkspaceStore: ObservableObject {
     }
 
     func updateProject(_ project: WorkspaceProject) {
+        if let existing = projects.first(where: { $0.id == project.id }), existing == project { return }
         var updated = project
         updated.modifiedAt = Date()
         if let index = projects.firstIndex(where: { $0.id == updated.id }) {

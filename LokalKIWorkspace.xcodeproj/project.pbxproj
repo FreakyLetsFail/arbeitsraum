@@ -11,6 +11,7 @@
 		00E5838C73FE5FA405798652 /* OfficeFiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D39C696B1CFC24F1CCDAFD7 /* OfficeFiles.swift */; };
 		030D2227DB7D81CE4AA2576E /* LocalKIWorkspaceApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6366D5CFC9D5AF80E235E701 /* LocalKIWorkspaceApp.swift */; };
 		0522A18AE7CFF34E193AB211 /* ProjectFilesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2089022875EE1D05AF2A9A62 /* ProjectFilesTests.swift */; };
+		0ADA7F82FB0BFD6186ADA692 /* AuroraIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 83695FF01F8ECF0869833525 /* AuroraIcon.icns */; };
 		0E44D72FDF05B3DC8DB48FA0 /* WorkspaceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAD51583F7D80A10DD899B68 /* WorkspaceModels.swift */; };
 		19B924B356EF28F9FC7569D9 /* ModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CA90CF0B6F35D4C552BDF48 /* ModelCatalog.swift */; };
 		1EF30D642A4941DEDEF1EBB8 /* SpreadsheetFormula.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C48D60E3DB5D4B103E0CC60 /* SpreadsheetFormula.swift */; };
@@ -74,6 +75,7 @@
 		70C83BD46B6BC95BFB116C94 /* ModelLibraryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelLibraryTests.swift; sourceTree = "<group>"; };
 		76ADACC32CC157D95E1171B5 /* ModelLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelLibrary.swift; sourceTree = "<group>"; };
 		7C8606C7C071E839469F5BC5 /* LokalKIWorkspaceTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LokalKIWorkspaceTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		83695FF01F8ECF0869833525 /* AuroraIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AuroraIcon.icns; sourceTree = "<group>"; };
 		8454C142884F3E1A9634F81E /* LokalKIWorkspace.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LokalKIWorkspace.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		972F36B59C30E88ECABD5BDF /* WorkspaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTests.swift; sourceTree = "<group>"; };
 		9DE5D2B498493826540F449C /* SpreadsheetFormulaTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpreadsheetFormulaTests.swift; sourceTree = "<group>"; };
@@ -182,6 +184,7 @@
 		AB2C7A4BEFB245E556B07BCF /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				83695FF01F8ECF0869833525 /* AuroraIcon.icns */,
 				4704E033EC8A59FF93710BD9 /* ModelCatalog.json */,
 			);
 			path = Resources;
@@ -300,6 +303,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4B50F08A1C4DC39F754D315D /* Assets.xcassets in Resources */,
+				0ADA7F82FB0BFD6186ADA692 /* AuroraIcon.icns in Resources */,
 				601FB872DB6BA762919DCD35 /* ModelCatalog.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -495,21 +499,22 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = de.justuswaechter.LokalKIWorkspaceTests;
 				SDKROOT = macosx;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Arbeitsraum.app/Contents/MacOS/Arbeitsraum";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Aurora.app/Contents/MacOS/Aurora";
 			};
 			name = Debug;
 		};
 		ABF5B9F5EC803B419D3D6583 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
 				CODE_SIGN_ENTITLEMENTS = Config/LokalKIWorkspace.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 3;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Arbeitsraum;
+				INFOPLIST_FILE = Config/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Aurora;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Das Mikrofon wird nur auf Wunsch verwendet, um lokal Audio aufzunehmen.";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Audio wird ausschließlich mit verfügbarer Offline-Spracherkennung transkribiert.";
@@ -520,7 +525,7 @@
 				MARKETING_VERSION = 0.2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = de.justuswaechter.LokalKIWorkspace;
 				PRODUCT_MODULE_NAME = Lokal_KI_Workspace;
-				PRODUCT_NAME = Arbeitsraum;
+				PRODUCT_NAME = Aurora;
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 			};
@@ -539,21 +544,22 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = de.justuswaechter.LokalKIWorkspaceTests;
 				SDKROOT = macosx;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Arbeitsraum.app/Contents/MacOS/Arbeitsraum";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Aurora.app/Contents/MacOS/Aurora";
 			};
 			name = Release;
 		};
 		EC0CEAB2EC7108DB247F3190 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
 				CODE_SIGN_ENTITLEMENTS = Config/LokalKIWorkspace.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 3;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Arbeitsraum;
+				INFOPLIST_FILE = Config/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Aurora;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Das Mikrofon wird nur auf Wunsch verwendet, um lokal Audio aufzunehmen.";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Audio wird ausschließlich mit verfügbarer Offline-Spracherkennung transkribiert.";
@@ -564,7 +570,7 @@
 				MARKETING_VERSION = 0.2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = de.justuswaechter.LokalKIWorkspace;
 				PRODUCT_MODULE_NAME = Lokal_KI_Workspace;
-				PRODUCT_NAME = Arbeitsraum;
+				PRODUCT_NAME = Aurora;
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 			};

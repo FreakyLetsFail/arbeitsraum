@@ -30,7 +30,7 @@ struct SpreadsheetEditor: View {
     private var columns: Int { max(1, project.tableRows.map(\.count).max() ?? 1) }
     private var formulaSummary: String {
         let cellCount = project.tableRows.reduce(0) { $0 + $1.count }
-        guard cellCount <= 100_000 else { return "Summe nicht berechnet · über 100.000 Zellen" }
+        guard cellCount <= 100_000 else { return "Blattsumme nicht berechnet · über 100.000 Zellen" }
         var sum = 0.0
         var numericCount = 0
         var errorCount = 0
@@ -49,7 +49,7 @@ struct SpreadsheetEditor: View {
             }
         }
         let sumText = numericCount == 0 ? "—" : (sum.isFinite ? String(sum) : "Überlauf")
-        var parts = ["Summe: \(sumText)", "\(numericCount) Zahlen"]
+        var parts = ["Blattsumme: \(sumText)", "\(numericCount) Zahlen"]
         if errorCount > 0 { parts.append("\(errorCount) Fehler") }
         return parts.joined(separator: " · ")
     }
@@ -65,13 +65,13 @@ struct SpreadsheetEditor: View {
     }
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
+            ScrollView(.horizontal, showsIndicators: true) {
+              HStack(spacing: 12) {
                 Text(selected.map { "\(SpreadsheetData.columnName($0.column))\($0.row + 1)" } ?? "—")
                     .font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary).frame(width: 42)
                 Divider().frame(height: 17)
                 TextField("Zelle auswählen", text: cellValue).textFieldStyle(.plain)
-                    .disabled(selected == nil).accessibilityLabel("Zellinhalt")
-                Spacer(minLength: 8)
+                    .frame(width: 180).disabled(selected == nil).accessibilityLabel("Zellinhalt")
                 Button { project.tableRows.append(Array(repeating: "", count: columns)) } label: { Label("Zeile hinzufügen", systemImage: "plus") }
                     .help("Zeile hinzufügen")
                 Button {
@@ -88,25 +88,32 @@ struct SpreadsheetEditor: View {
                     }
                 } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).fixedSize()
                     .accessibilityLabel("Tabellenaktionen")
+              }.fixedSize(horizontal: true, vertical: false)
             }
-            .font(.system(size: 12)).buttonStyle(.borderless).padding(.horizontal, 14).frame(height: 42)
-            .background(Color(nsColor: .controlBackgroundColor))
-            Divider()
+            .font(.system(size: 12)).buttonStyle(.borderless).padding(.horizontal, 16).frame(height: 42)
+            .foregroundStyle(WorkspacePalette.ink)
+            .background(WorkspacePalette.toolbar)
+            Rectangle().fill(WorkspacePalette.border).frame(height: 1)
             NativeSpreadsheet(rows: $project.tableRows, selected: $selected)
                 .overlay(alignment: .bottomLeading) {
                     if project.tableRows.count <= 1 {
                         Button("Erste Zeile hinzufügen") { project.tableRows.append(Array(repeating: "", count: columns)) }
-                            .buttonStyle(.plain).foregroundStyle(.secondary).font(.system(size: 12))
-                            .padding(20).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6)).padding(18)
+                            .buttonStyle(.plain).foregroundStyle(WorkspacePalette.ink).font(.system(size: 12, weight: .medium))
+                            .padding(12).background(WorkspacePalette.paper, in: RoundedRectangle(cornerRadius: 9))
+                            .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(WorkspacePalette.border))
+                            .padding(18)
                     }
                 }
-            Divider()
+                .background(WorkspacePalette.canvas)
+            Rectangle().fill(WorkspacePalette.border).frame(height: 1)
             HStack {
                 Text("\(max(0, project.tableRows.count - 1)) Zeilen · \(columns) Spalten")
                 Spacer()
-                Text(formulaSummary).help("Formeln werden lokal ausgewertet. Zahlen in der Tabelle werden summiert; Textzellen bleiben unberücksichtigt.")
-            }.font(.system(size: 11)).foregroundStyle(.secondary).padding(.horizontal, 18).frame(height: 28)
+                Text(formulaSummary).help("Alle Zahlen und Formelergebnisse im Blatt werden summiert. Zwischensummen können dadurch mehrfach eingehen; Textzellen bleiben unberücksichtigt.")
+            }.font(.system(size: 10)).foregroundStyle(WorkspacePalette.muted)
+                .padding(.horizontal, 18).frame(height: 28).background(WorkspacePalette.toolbar)
         }
+        .background(WorkspacePalette.canvas)
     }
 }
 
@@ -134,6 +141,7 @@ private struct NativeSpreadsheet: NSViewRepresentable {
         let scroll = NSScrollView()
         scroll.hasVerticalScroller = true; scroll.hasHorizontalScroller = true
         scroll.autohidesScrollers = true
+        scroll.drawsBackground = false
         let table = SheetTableView()
         table.delegate = context.coordinator; table.dataSource = context.coordinator
         table.target = context.coordinator
@@ -142,7 +150,8 @@ private struct NativeSpreadsheet: NSViewRepresentable {
         table.intercellSpacing = .zero
         table.gridStyleMask = [.solidHorizontalGridLineMask, .solidVerticalGridLineMask]
         table.gridColor = .separatorColor
-        table.usesAlternatingRowBackgroundColors = true
+        table.usesAlternatingRowBackgroundColors = false
+        table.backgroundColor = WorkspacePalette.paperNS
         table.columnAutoresizingStyle = .noColumnAutoresizing
         table.allowsColumnReordering = false
         table.allowsEmptySelection = true

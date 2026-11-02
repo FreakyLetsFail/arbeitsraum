@@ -66,16 +66,15 @@ struct ModelDownloader: Sendable {
             progress(Double(downloaded) / Double(total), file.path)
             let url = URL(string: "https://huggingface.co/\(model.id)/resolve/\(revision)/\(file.path)")!
             let offset = downloaded
-            let observer = DownloadProgressObserver { received in
+            let destination = staging.appending(path: file.path)
+            try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let observer = DownloadProgressObserver(destination: destination) { received in
                 progress(min(0.99, Double(offset + received) / Double(total)), file.path)
             }
             var request = URLRequest(url: url)
             request.timeoutInterval = 180
-            let (temporary, response) = try await URLSession.shared.download(for: request, delegate: observer)
+            let response = try await observer.download(request)
             try validate(response)
-            let destination = staging.appending(path: file.path)
-            try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try FileManager.default.moveItem(at: temporary, to: destination)
             try verify(file: file, at: destination)
             downloaded += file.size
         }
@@ -139,8 +138,65 @@ private struct HubMetadata: Decodable {
 
 private final class DownloadProgressObserver: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
     private let report: @Sendable (Int64) -> Void
-    init(report: @escaping @Sendable (Int64) -> Void) { self.report = report }
-    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) { }
+    private let destination: URL
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<URLResponse, Error>?
+    private var task: URLSessionDownloadTask?
+    private var cancelled = false
+
+    init(destination: URL, report: @escaping @Sendable (Int64) -> Void) {
+        self.destination = destination
+        self.report = report
+    }
+
+    func download(_ request: URLRequest) async throws -> URLResponse {
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                lock.lock()
+                guard !cancelled else {
+                    lock.unlock()
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
+                self.continuation = continuation
+                let session = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil)
+                let task = session.downloadTask(with: request)
+                self.task = task
+                task.resume()
+                lock.unlock()
+            }
+        } onCancel: {
+            self.lock.lock()
+            self.cancelled = true
+            self.task?.cancel()
+            self.lock.unlock()
+        }
+    }
+
+    private func finish(_ result: Result<URLResponse, Error>, session: URLSession) {
+        lock.lock()
+        let pending = continuation
+        continuation = nil
+        task = nil
+        lock.unlock()
+        session.finishTasksAndInvalidate()
+        pending?.resume(with: result)
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+        do {
+            guard let response = downloadTask.response else { throw URLError(.badServerResponse) }
+            try FileManager.default.moveItem(at: location, to: destination)
+            finish(.success(response), session: session)
+        } catch {
+            finish(.failure(error), session: session)
+        }
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        if let error { finish(.failure(error), session: session) }
+    }
+
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
         report(totalBytesWritten)
     }

@@ -1,8 +1,20 @@
+import AppKit
 import SwiftUI
+
+enum AuroraBrand {
+    static let icon: NSImage? = Bundle.main.url(forResource: "AuroraIcon", withExtension: "icns")
+        .flatMap { NSImage(contentsOf: $0) }
+}
 
 @main
 struct LokalKIWorkspaceApp: App {
     @StateObject private var store = WorkspaceStore()
+
+    init() {
+        if let icon = AuroraBrand.icon {
+            NSApplication.shared.applicationIconImage = icon
+        }
+    }
 
     var body: some Scene {
         WindowGroup {

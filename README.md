@@ -1,4 +1,4 @@
-# Arbeitsraum
+# Aurora
 
 Native macOS-App für Dokumente, Tabellen und einen Chat mit lokalen Sprachmodellen. Projekte können mehrere Dateien, einen gespeicherten Chatverlauf und ein bearbeitbares Projektgedächtnis enthalten.
 
@@ -11,7 +11,8 @@ Native macOS-App für Dokumente, Tabellen und einen Chat mit lokalen Sprachmodel
 - **Tabellen:** Zeilen und Spalten lassen sich direkt über Schaltflächen hinzufügen. Dazu kommen verstellbare Spaltenbreiten, Bearbeitungszeile, Doppelklick, Tab/Shift-Tab/Enter und TSV-Einfügen. Grundformeln mit Zellbezügen, Bereichen, `+ - * / ^`, SUM/SUMME, AVERAGE/MITTELWERT, MIN, MAX und COUNT/ANZAHL. Dezimalpunkt; Komma oder Semikolon trennt Funktionsargumente. Formelrohtext bleibt erhalten. Die Statussumme bezieht sich auf das ganze Blatt und zählt enthaltene Zwischensummen mit.
 - **Dateien:** TXT/Markdown/RTF/DOCX, UTF-8 CSV/TSV, XLSX, PDF und PNG/JPEG hinzufügen. Originale werden ins Projekt kopiert. Mehrere XLSX-Blätter werden getrennte Projektdateien. PDF-Text und Bild-OCR werden auf dem Mac für die lokale Suche ausgelesen; bei PDF und Bild zeigt der Editor die Datei statt des extrahierten Textes. Gescannte PDFs ohne Textschicht werden ausdrücklich als nicht auslesbar angezeigt; PDF-OCR ist noch nicht eingebaut.
 - **Export:** DOCX mit einfacher Zeichenformatierung, RTF, TXT, CSV sowie alle Tabellen eines Projekts als XLSX-Arbeitsmappe. Komplexe Office-Dokumente werden nicht verlustfrei roundtrip-fähig verarbeitet; Originale bleiben erhalten.
-- **Chat rechts:** **Enter sendet**, **Shift+Enter** fügt eine Zeile ein. Dateien per Büroklammer auswählen oder hinzufügen. Die Checkbox aktiviert die Suche über die Projektdateien. Der Kontextkreis schätzt den Tokenverbrauch vor dem Senden und zeigt die gemessene App-Eingabegröße nach dem Senden. Bei Überschreitung kürzt ein zweiter Versuch ältere Chatbeiträge und Quellen nur für diese Anfrage; der vollständige Chat und die Quelldateien bleiben gespeichert. Antworten können kopiert, bearbeitet oder in das aktive Dokument eingefügt werden. Der Chat verändert Tabellen nicht automatisch.
+- **Einfacher Einstieg:** Im Chat „Datei hinzufügen“, danach „Zusammenfassen“ oder „Bericht entwerfen“ wählen. Die Aufgabe kann vor dem Senden geändert werden. „Neues Dokument“ öffnet eine bearbeitbare Vorschau und legt erst nach Bestätigung eine Datei im Projekt an. Anhänge grenzen die Anfrage zunächst auf die gewählten Dateien ein. Aurora weist auf nicht lesbare Dateien und unvollständige Quellenauswahl hin; lange Unterlagen werden nicht automatisch vollständig zusammengefasst.
+- **Chat rechts:** **Enter sendet**, **Shift+Enter** fügt eine Zeile ein. Dateien per Büroklammer auswählen oder hinzufügen. Die Checkbox aktiviert die Suche über die Projektdateien. Der Kontextkreis schätzt den Tokenverbrauch vor dem Senden und zeigt die gemessene App-Eingabegröße nach dem Senden. Bei Überschreitung kürzt ein zweiter Versuch ältere Chatbeiträge und Quellen nur für diese Anfrage; der vollständige Chat und die Quelldateien bleiben gespeichert. Antworten können kopiert, bearbeitet oder über eine bearbeitbare Vorschau am Ende des aktiven Dokuments eingefügt werden. In der Vorschau lassen sich die an das Modell übergebenen Quellenauszüge aufklappen. Der Chat verändert Tabellen nicht automatisch.
 - **Gedächtnis:** explizite Notizen pro Projekt; ändern/löschen über „Gedächtnis“, aus einer Antwort mit „Merken“ und anschließender Prüfung übernehmen. Bis 20 Notizen; die ersten 3.000 Zeichen werden übergeben. Kein automatisches Training und keine automatische Übernahme von Modellbehauptungen.
 - **Vorlagen und Anweisungen:** Such-/Typfilter, Duplizieren und getrennte Inhalts-/Anweisungsbereiche. Tabellenvorlagen verwenden TSV. Bestehende Projekte behalten ihre eigenen Chat-Anweisungen.
 - **Audio:** Import oder Mikrofonaufnahme, anschließend auf Wunsch Apple Speech mit verpflichtender On-Device-Erkennung. Ohne verfügbares deutsches Offline-Sprachmodell wird abgebrochen. Transkripte müssen geprüft werden und können in ein Dokument übernommen werden. LLM und Spracherkennung sind getrennt.
@@ -30,9 +31,9 @@ Der **Offline-Modus ist standardmäßig aktiv**. Er sperrt Modelldownloads und V
 
 Für die einmalige Einrichtung: unter **Modelle & Einstellungen → Datenschutz** Downloads freigeben, ein Modell herunterladen und danach Offline-Modus wieder aktivieren. Der öffentliche Modellkatalog ist in der App enthalten und wird nicht automatisch online aktualisiert. Downloads enthalten keine Projekttexte, Prompts oder Audiodateien. Gewichte sind kein Bestandteil dieses Repositorys.
 
-Der Katalog enthält 26 Einträge: 17 native MLX-Textmodelle, acht Optionen für einen separaten lokalen Server und eine hier inkompatible Nota-Variante. Die Empfehlung berücksichtigt Hardware, sämtliche Modellgewichte und eine geschätzte Kontext-/Systemreserve. Sie ist kein Qualitätsbenchmark und keine fachliche Eignungsbewertung. Bei MoE müssen auch die nicht aktiven Gewichte in den Speicher passen.
+Die Modellbibliothek zeigt zehn kuratierte native MLX-Modelle. Bereits installierte ältere Modelle bleiben unter „Installiert“ verfügbar. Die neuen Modelle sind noch nicht alle durch praktische Inferenz geprüft. Die Empfehlung berücksichtigt Hardware, sämtliche Modellgewichte und eine geschätzte Kontext-/Systemreserve. Sie ist kein Qualitätsbenchmark und keine fachliche Eignungsbewertung. Bei MoE müssen auch die nicht aktiven Gewichte in den Speicher passen.
 
-Qwen3 0,6B und LFM2.5 1,2B Instruct wurden auf einem M2 mit 16 GB tatsächlich geladen und zur Textgenerierung verwendet. Größere Modelle, MiniCPM und Ollama wurden hier nicht praktisch geprüft. MiniCPM-V 4.7 35B-A3B ist als lokale Serveroption erfasst; native Bild-/Video-Inferenz mit MiniCPM ist nicht eingebaut. Importierte Bilder liefern derzeit lokal erkannten Text an den Chat.
+Qwen3 0,6B, LFM2.5 1,2B Instruct, Qwen3.5 4B/9B, MiniCPM5 1B/2B und Nemotron 3.5 Bolt E4B wurden auf einem M2 mit 16 GB tatsächlich geladen und zur Textgenerierung verwendet. MiniCPM5 1B war bei fiktiven Berichtsentwürfen unzuverlässig und wird nicht empfohlen. Die weiteren Modelle und Ollama wurden hier nicht alle praktisch geprüft. MiniCPM-V 4.7 35B-A3B ist als lokale Serveroption erfasst; native Bild-/Video-Inferenz mit MiniCPM ist nicht eingebaut. Importierte Bilder liefern derzeit lokal erkannten Text an den Chat.
 
 Details: [MODELS.md](MODELS.md). Grenzen dieser Version: **6.000 Eingabetokens**, **1.536 Ausgabetokens**, **8K KV-Cache**. Der Kontextkreis ist vor dem Senden eine grobe Schätzung; die Eingabegrenze prüft das gewählte MLX-Tokenizer-Modell. Bleibt eine Anfrage nach der Kürzung zu lang, erscheint eine Fehlermeldung. Thinking-Modelle können das Ausgabelimit früh erreichen.
 
@@ -50,6 +51,9 @@ xcodegen generate
 Falls Xcode nur einen Metal-Platzhalter enthält, den offiziellen Compiler unter **Xcode → Settings → Components** installieren. `build.sh` unterstützt auch eine bereits vorhandene offizielle Metal-Toolchain unter `~/Library/Developer/Toolchains/`. Das gebaute Programm benötigt Xcode nicht. Lokale Entwicklungsbauten sind ad hoc signiert und nicht notarisiert.
 
 ## Prüfstand
+
+Stand 02.11.2026: 38 XCTest-Fälle, davon 37 erfolgreich und einer mangels heruntergeladenem Qwen3.5 9B zunächst übersprungen; der 9B-Fall wurde nach dem Download separat erfolgreich ausgeführt. Die Tests umfassen den Import einer fiktiven Notiz, lokale KI-Antworten und das Speichern und erneute Laden eines Entwurfs. Zusätzlich wurden Dokument, Chat, bearbeitbare Vorschau, Tabellen und die neue Auswahl für Dateien in der App geprüft. Die Modelle wurden an einzelnen synthetischen Beispielen erprobt; automatische Tests prüfen die Antworterzeugung, nicht deren fachliche Richtigkeit. Dies ist kein allgemeiner Qualitäts- oder klinischer Eignungsnachweis.
+
 
 Stand 20.10.2026, M2 / 16 GB / Xcode 27.1: **29 XCTest-Fälle erfolgreich**, einschließlich echter lokaler MLX-Inferenz mit synthetischen Projektquellen, Chatverlauf, Modellwechsel und Entladen. Weitere Tests decken Persistenz/Migration, Importkopien, Projektisolation, Quellenbudgets, Dateiexport und Ersetzen, DOCX- und XLSX-Roundtrips, CSV, Formeln/Fehlerfälle, begrenzte Referenzauswertung und gesperrte Downloads im Offline-Modus ab.
 
@@ -73,4 +77,4 @@ Dateirechte sind eingeschränkt. Es gibt **keine zusätzliche anwendungsseitige 
 
 ## Lizenz
 
-MIT für den App-Quellcode und das originale App-Symbol. [Abhängigkeiten](THIRD_PARTY_NOTICES.md) und Modellgewichte haben eigene Lizenzen; die MIT-Lizenz der App umfasst diese nicht.
+MIT für den App-Quellcode und das eigens für Aurora bildgenerierte App-Symbol. [Abhängigkeiten](THIRD_PARTY_NOTICES.md) und Modellgewichte haben eigene Lizenzen; die MIT-Lizenz der App umfasst diese nicht.
