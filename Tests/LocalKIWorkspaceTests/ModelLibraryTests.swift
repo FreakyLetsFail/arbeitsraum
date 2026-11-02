@@ -147,4 +147,28 @@ final class ModelLibraryTests: XCTestCase {
         XCTAssertNil(library.activeModelID)
     }
 
+    @MainActor
+    func testInstalledModelsRespondToSyntheticOfficeQuestions() async throws {
+        let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appending(path: "LokalKIWorkspace/Models", directoryHint: .isDirectory)
+        let ids = ["mlx-community/LFM2.5-1.2B-Instruct-4bit", "mlx-community/Qwen3-0.6B-4bit"]
+        guard ids.allSatisfy({ ModelDownloader.installation(at: ModelDownloader.directory(for: $0, root: root)) != nil }) else {
+            throw XCTSkip("Requires the two installed models; no download is performed.")
+        }
+        var project = WorkspaceProject(title: "Synthetische Planung", kind: .document,
+            documentText: "Projekt Birke. Das Treffen findet am Dienstag um 14 Uhr statt. Verantwortlich ist Mira.")
+        project.files = [.init(name: "Budget", kind: .table, rows: [["Posten", "Euro"], ["Papier", "17"], ["Stifte", "25"]])]
+        let library = ModelLibrary(rootURL: root)
+        for id in ids {
+            for question in ["Wann findet das Treffen statt und wer ist verantwortlich? Antworte kurz anhand der Quelle.",
+                             "Wie viel kosten Papier und Stifte zusammen? Nenne nur die Summe in Euro."] {
+                let sources = ProjectKnowledge.sources(project: project, question: question, includeProject: true, attachments: [])
+                let answer = try await library.generate(modelID: id, systemPrompt: ProjectKnowledge.instructions(project: project, sources: sources), userText: question, onChunk: { _ in })
+                print("OFFICE_EVAL \(id) | \(question) | \(answer)")
+                XCTAssertFalse(answer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        await library.unload()
+    }
+
 }

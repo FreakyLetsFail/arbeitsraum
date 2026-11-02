@@ -23,6 +23,7 @@ enum ProjectKnowledge {
         var result: [WorkspaceSource] = []; var remaining = max(0, budget)
         // Give each explicitly attached file one excerpt before filling with search hits.
         for id in attachments.sorted(by: { $0.uuidString < $1.uuidString }) {
+            guard result.count < 8 else { break }
             if let candidate = candidates.first(where: { $0.0.fileID == id }), candidate.0.excerpt.count <= remaining {
                 result.append(candidate.0); remaining -= candidate.0.excerpt.count
             }

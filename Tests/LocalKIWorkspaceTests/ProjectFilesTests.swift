@@ -42,6 +42,14 @@ final class ProjectFilesTests: XCTestCase {
         let bounded = ProjectKnowledge.sources(project: first, question: "Prüfkennung", includeProject: true, attachments: [], budget: 25)
         XCTAssertLessThanOrEqual(bounded.reduce(0) { $0 + $1.excerpt.count }, 25)
     }
+    func testRetrievalLimitsEvenManyExplicitAttachments() {
+        var project = WorkspaceProject(title: "Test", kind: .document)
+        let files = (0..<12).map { WorkspaceFile(name: "Datei \($0)", kind: .document, text: "Inhalt \($0)") }
+        project.files = files
+        let sources = ProjectKnowledge.sources(project: project, question: "Inhalt", includeProject: false, attachments: Set(files.map(\.id)))
+        XCTAssertEqual(sources.count, 8)
+        XCTAssertEqual(Set(sources.map(\.fileID)).count, 8)
+    }
     @MainActor
     func testDOCXRoundTripKeepsTextAndBold() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

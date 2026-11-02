@@ -30,7 +30,7 @@ struct SpreadsheetEditor: View {
     private var columns: Int { max(1, project.tableRows.map(\.count).max() ?? 1) }
     private var formulaSummary: String {
         let cellCount = project.tableRows.reduce(0) { $0 + $1.count }
-        guard cellCount <= 100_000 else { return "Summe nicht berechnet · über 100.000 Zellen" }
+        guard cellCount <= 100_000 else { return "Blattsumme nicht berechnet · über 100.000 Zellen" }
         var sum = 0.0
         var numericCount = 0
         var errorCount = 0
@@ -49,7 +49,7 @@ struct SpreadsheetEditor: View {
             }
         }
         let sumText = numericCount == 0 ? "—" : (sum.isFinite ? String(sum) : "Überlauf")
-        var parts = ["Summe: \(sumText)", "\(numericCount) Zahlen"]
+        var parts = ["Blattsumme: \(sumText)", "\(numericCount) Zahlen"]
         if errorCount > 0 { parts.append("\(errorCount) Fehler") }
         return parts.joined(separator: " · ")
     }
@@ -109,7 +109,7 @@ struct SpreadsheetEditor: View {
             HStack {
                 Text("\(max(0, project.tableRows.count - 1)) Zeilen · \(columns) Spalten")
                 Spacer()
-                Text(formulaSummary).help("Formeln werden lokal ausgewertet. Zahlen in der Tabelle werden summiert; Textzellen bleiben unberücksichtigt.")
+                Text(formulaSummary).help("Alle Zahlen und Formelergebnisse im Blatt werden summiert. Zwischensummen können dadurch mehrfach eingehen; Textzellen bleiben unberücksichtigt.")
             }.font(.system(size: 10)).foregroundStyle(WorkspacePalette.muted)
                 .padding(.horizontal, 18).frame(height: 28).background(WorkspacePalette.toolbar)
         }
@@ -150,7 +150,7 @@ private struct NativeSpreadsheet: NSViewRepresentable {
         table.intercellSpacing = .zero
         table.gridStyleMask = [.solidHorizontalGridLineMask, .solidVerticalGridLineMask]
         table.gridColor = .separatorColor
-        table.usesAlternatingRowBackgroundColors = true
+        table.usesAlternatingRowBackgroundColors = false
         table.backgroundColor = WorkspacePalette.paperNS
         table.columnAutoresizingStyle = .noColumnAutoresizing
         table.allowsColumnReordering = false

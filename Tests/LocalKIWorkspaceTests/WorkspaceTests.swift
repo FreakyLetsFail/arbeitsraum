@@ -32,4 +32,18 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertEqual(project.tableRows.count, 1)
         XCTAssertEqual(project.tableRows[0].count, 4)
     }
+
+    @MainActor
+    func testOpeningPrimaryFileWithoutChangesDoesNotRewriteProject() throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = WorkspaceStore(rootURL: root)
+        var project = store.createProject(title: "Test", kind: .document, template: nil)
+        let original = project
+        let content = project.content(for: project.id)
+        project.updateContent(content, fileID: project.id)
+        XCTAssertEqual(project, original)
+        store.updateProject(project)
+        XCTAssertEqual(store.projects.first, original)
+    }
 }

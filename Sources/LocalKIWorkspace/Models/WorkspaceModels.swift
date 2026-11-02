@@ -160,7 +160,8 @@ extension WorkspaceProject {
     }
     mutating func updateContent(_ edited: WorkspaceProject, fileID: UUID) {
         if fileID == id {
-            primaryFileName = edited.title; documentText = edited.documentText
+            if edited.title != primaryName { primaryFileName = edited.title }
+            documentText = edited.documentText
             documentRTF = edited.documentRTF; tableRows = edited.tableRows
         } else if let index = files?.firstIndex(where: { $0.id == fileID }) {
             files?[index].name = edited.title; files?[index].text = edited.documentText

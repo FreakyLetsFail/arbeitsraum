@@ -18,6 +18,7 @@ struct AssistantPanel: View {
     @State private var importing = false
     @State private var memoryDraft: String?
     @State private var templateDraft: WorkspaceTemplate?
+    @State private var insertionDraft: DocumentInsertionDraft?
     @State private var exactContextTokens: Int?
 
     @State private var editingMessageID: UUID?
@@ -119,6 +120,15 @@ struct AssistantPanel: View {
             SaveTemplateSheet(template: template) { saved in
                 store.saveTemplates(store.templates + [saved])
                 templateDraft = nil
+            }
+        }
+        .sheet(item: $insertionDraft) { draft in
+            DocumentInsertionSheet(draft: draft) { text in
+                guard project.allFiles.contains(where: { $0.id == draft.fileID && $0.kind == .document }) else { return }
+                var edited = project.content(for: draft.fileID)
+                let separator = edited.documentText.isEmpty ? "" : "\n\n"
+                DocumentContent.append(separator + text, to: &edited)
+                project.updateContent(edited, fileID: draft.fileID)
             }
         }
     }
@@ -238,13 +248,12 @@ struct AssistantPanel: View {
                         HStack(spacing: 12) {
                             Button("Kopieren") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(message.text, forType: .string) }
                             if project.allFiles.first(where: { $0.id == (activeFileID ?? project.id) })?.kind == .document {
-                                Button("Einfügen") {
+                                Button("Vorschau & Einfügen") {
                                     let id = activeFileID ?? project.id
-                                    var edited = project.content(for: id)
-                                    DocumentContent.append("\n\n" + message.text, to: &edited)
-                                    project.updateContent(edited, fileID: id)
+                                    guard let file = project.allFiles.first(where: { $0.id == id }) else { return }
+                                    insertionDraft = DocumentInsertionDraft(fileID: id, fileName: file.name, text: message.text)
                                 }
-                                    .disabled(message.status != .complete).help("Am Dokumentende einfügen")
+                                    .disabled(message.status != .complete).help("Text vor dem Einfügen am Dokumentende prüfen")
                             }
                             Menu("Mehr") {
                                 Button("Bearbeiten") { editingMessageID = message.id }
@@ -381,6 +390,43 @@ struct AssistantPanel: View {
             ? (kind == .document ? "Neue Dokumentvorlage" : "Neue Tabellenvorlage")
             : suggestedName
         templateDraft = WorkspaceTemplate(name: name, kind: kind, body: message.text, systemPrompt: project.systemPrompt)
+    }
+}
+
+private struct DocumentInsertionDraft: Identifiable {
+    let id = UUID()
+    let fileID: UUID
+    let fileName: String
+    let text: String
+}
+
+private struct DocumentInsertionSheet: View {
+    let draft: DocumentInsertionDraft
+    let onInsert: (String) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var text: String
+
+    init(draft: DocumentInsertionDraft, onInsert: @escaping (String) -> Void) {
+        self.draft = draft
+        self.onInsert = onInsert
+        _text = State(initialValue: draft.text)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Text vor dem Einfügen prüfen").font(.title2)
+            Text("Der Text wird am Ende von „\(draft.fileName)“ eingefügt. Du kannst ihn hier bearbeiten.")
+                .foregroundStyle(.secondary)
+            TextEditor(text: $text).font(.body).scrollContentBackground(.hidden).padding(8)
+                .background(WorkspacePalette.paper, in: RoundedRectangle(cornerRadius: 8))
+            HStack {
+                Button("Abbrechen") { dismiss() }
+                Spacer()
+                Button("Ins Dokument einfügen") { onInsert(text); dismiss() }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }.padding(24).frame(width: 600, height: 430).background(WorkspacePalette.canvas)
     }
 }
 
