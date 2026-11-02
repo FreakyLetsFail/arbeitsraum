@@ -251,7 +251,7 @@ struct AssistantPanel: View {
                                 Button("Vorschau & Einfügen") {
                                     let id = activeFileID ?? project.id
                                     guard let file = project.allFiles.first(where: { $0.id == id }) else { return }
-                                    insertionDraft = DocumentInsertionDraft(fileID: id, fileName: file.name, text: message.text)
+                                    insertionDraft = DocumentInsertionDraft(fileID: id, fileName: file.name, text: message.text, sources: message.sources ?? [])
                                 }
                                     .disabled(message.status != .complete).help("Text vor dem Einfügen am Dokumentende prüfen")
                             }
@@ -398,6 +398,7 @@ private struct DocumentInsertionDraft: Identifiable {
     let fileID: UUID
     let fileName: String
     let text: String
+    let sources: [WorkspaceSource]
 }
 
 private struct DocumentInsertionSheet: View {
@@ -419,6 +420,23 @@ private struct DocumentInsertionSheet: View {
                 .foregroundStyle(.secondary)
             TextEditor(text: $text).font(.body).scrollContentBackground(.hidden).padding(8)
                 .background(WorkspacePalette.paper, in: RoundedRectangle(cornerRadius: 8))
+            if draft.sources.isEmpty {
+                Text("Für diese Antwort wurden keine Quellenauszüge bereitgestellt.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                DisclosureGroup("\(draft.sources.count) bereitgestellte Quellenauszüge prüfen") {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 12) {
+                            ForEach(Array(draft.sources.enumerated()), id: \.element.id) { index, source in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("[\(index + 1)] \(source.title)").font(.caption.bold())
+                                    Text(source.excerpt).font(.caption).textSelection(.enabled)
+                                }.frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }.padding(10)
+                    }.frame(maxHeight: 130).background(WorkspacePalette.paper, in: RoundedRectangle(cornerRadius: 8))
+                }.font(.callout)
+            }
             HStack {
                 Button("Abbrechen") { dismiss() }
                 Spacer()
@@ -426,7 +444,7 @@ private struct DocumentInsertionSheet: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-        }.padding(24).frame(width: 600, height: 430).background(WorkspacePalette.canvas)
+        }.padding(24).frame(width: 640, height: 500).background(WorkspacePalette.canvas)
     }
 }
 
