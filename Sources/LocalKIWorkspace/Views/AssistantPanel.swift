@@ -5,6 +5,7 @@ struct AssistantPanel: View {
     @Binding var project: WorkspaceProject
     @ObservedObject var store: WorkspaceStore
     var activeFileID: UUID? = nil
+    var onOpenFile: (UUID) -> Void = { _ in }
     @EnvironmentObject private var library: ModelLibrary
     @State private var question = ""
     @State private var messages: [WorkspaceMessage] = []
@@ -54,7 +55,7 @@ struct AssistantPanel: View {
                         if messages.isEmpty {
                             VStack(alignment: .leading, spacing: 13) {
                                 Text("Wobei soll ich helfen?").font(.system(size: 18, weight: .medium))
-                                Text("Fragen stellen oder den aktuellen Inhalt überarbeiten.").font(.system(size: 12)).foregroundStyle(.secondary)
+                                Text("Füge Notizen hinzu oder arbeite mit deinen Projektdateien. Die Verarbeitung bleibt auf diesem Mac.").font(.system(size: 12)).foregroundStyle(.secondary)
                                 VStack(alignment: .leading, spacing: 8) {
                                     suggestion("Text überarbeiten", prompt: "Überarbeite Rechtschreibung und Satzbau. Behalte alle Fakten unverändert.")
                                     suggestion("Offene Angaben finden", prompt: "Welche Angaben fehlen im aktuellen Inhalt? Ergänze keine Antworten.")
@@ -92,7 +93,11 @@ struct AssistantPanel: View {
         .fileImporter(isPresented: $showingImport, allowedContentTypes: WorkspaceImportTypes.all, allowsMultipleSelection: true) { result in
             Task {
                 importing = true; defer { importing = false }
-                do { let ids = try await store.importFiles(result.get(), projectID: project.id); attachments.formUnion(ids) }
+                do {
+                    let ids = try await store.importFiles(result.get(), projectID: project.id)
+                    attachments.formUnion(ids)
+                    if !ids.isEmpty { includeDocument = false }
+                }
                 catch { errorMessage = error.localizedDescription }
             }
         }
@@ -123,25 +128,47 @@ struct AssistantPanel: View {
             }
         }
         .sheet(item: $insertionDraft) { draft in
-            DocumentInsertionSheet(draft: draft) { text in
-                guard project.allFiles.contains(where: { $0.id == draft.fileID && $0.kind == .document }) else { return }
-                var edited = project.content(for: draft.fileID)
-                let separator = edited.documentText.isEmpty ? "" : "\n\n"
-                DocumentContent.append(separator + text, to: &edited)
-                project.updateContent(edited, fileID: draft.fileID)
+            DocumentInsertionSheet(draft: draft) { text, name in
+                if let fileID = draft.fileID {
+                    guard project.allFiles.contains(where: { $0.id == fileID && $0.kind == .document }) else { return }
+                    var edited = project.content(for: fileID)
+                    let separator = edited.documentText.isEmpty ? "" : "\n\n"
+                    DocumentContent.append(separator + text, to: &edited)
+                    project.updateContent(edited, fileID: fileID)
+                } else {
+                    let fileID = project.addDocument(name: name, text: text)
+                    onOpenFile(fileID)
+                }
             }
         }
     }
     private var composer: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let coverage = isGenerating ? ProjectKnowledge.Coverage() : draftCoverage
+        let missingSource = missingGuidedSource
+        return VStack(alignment: .leading, spacing: 10) {
             if store.settings.runtime == .mlx && library.installed[store.settings.selectedMLXModelID] == nil {
                 Button { showingModels = true } label: {
                     Label(library.installedCatalog.isEmpty ? "Modell installieren" : "Installiertes Modell auswählen", systemImage: "cpu")
                 }.buttonStyle(.bordered).help("Wähle in der Modellbibliothek ein installiertes Modell für den Chat.")
             }
             Toggle(isOn: $includeDocument) {
-                Label("Projektdateien durchsuchen", systemImage: "doc.text.magnifyingglass")
+                Label("Alle Projektdateien durchsuchen", systemImage: "doc.text.magnifyingglass")
             }.toggleStyle(.checkbox).font(.system(size: 11)).disabled(isGenerating)
+            if !attachments.isEmpty && !includeDocument {
+                Text("Nur die angehängten Dateien werden berücksichtigt.").font(.system(size: 10)).foregroundStyle(.secondary)
+            }
+            if !isGenerating && attachments.isEmpty && !includeDocument {
+                Text("Keine Dateien ausgewählt. Füge eine Datei hinzu oder aktiviere die Projektdateien.")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+            }
+            if missingSource {
+                Label("Füge zuerst eine Datei mit lesbarem Text hinzu oder wähle eine Projektdatei aus.", systemImage: "doc.badge.plus")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+            }
+            if coverage.isIncomplete {
+                Label(coverage.unreadableFiles.isEmpty ? "Längere Dateien können nur teilweise gelesen werden. Die Antwort kann unvollständig sein." : "Mindestens eine Datei enthält keinen lesbaren Text oder kann nur teilweise gelesen werden.", systemImage: "exclamationmark.triangle")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+            }
             if !attachments.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack {
@@ -150,23 +177,43 @@ struct AssistantPanel: View {
                         }
                     }
                 }
+                ForEach(project.allFiles.filter { attachments.contains($0.id) && $0.importNote != nil }) { file in
+                    if let note = file.importNote {
+                        Text("\(file.name): \(note)").font(.system(size: 10)).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            if question.isEmpty && !isGenerating {
+                HStack(spacing: 8) {
+                    Button("Zusammenfassen") {
+                        question = AssistantTasks.summary
+                    }
+                    Button("Bericht entwerfen") {
+                        question = AssistantTasks.report
+                    }
+                }.buttonStyle(.bordered).controlSize(.small)
             }
             VStack(alignment: .leading, spacing: 10) {
                 ZStack(alignment: .topLeading) {
-                    if question.isEmpty { Text("Nachricht schreiben …").foregroundStyle(.tertiary).font(.system(size: 13)).padding(.top, 5).allowsHitTesting(false) }
-                    ChatInput(text: $question, canSend: !isGenerating && !importing && !library.isBusy, onSend: send).frame(height: 64)
+                    if question.isEmpty { Text("Frage oder Aufgabe eingeben …").foregroundStyle(.tertiary).font(.system(size: 13)).padding(.top, 5).allowsHitTesting(false) }
+                    ChatInput(text: $question, canSend: !isGenerating && !importing && !library.isBusy && !missingSource, onSend: send).frame(height: 64)
                 }
                 HStack(spacing: 8) {
+                    Button { showingImport = true } label: { Label("Datei hinzufügen", systemImage: "paperclip") }
+                        .disabled(isGenerating || importing)
                     Menu {
-                        Button("Dateien hinzufügen …") { showingImport = true }
-                        Divider()
                         ForEach(project.allFiles) { file in
-                            Button { if attachments.contains(file.id) { attachments.remove(file.id) } else { attachments.insert(file.id) } } label: {
+                            Button {
+                                if attachments.contains(file.id) { attachments.remove(file.id) }
+                                else { attachments.insert(file.id); includeDocument = false }
+                            } label: {
                                 Label(file.name, systemImage: attachments.contains(file.id) ? "checkmark" : file.kind.symbol)
                             }
                         }
-                    } label: { Image(systemName: "paperclip") }.menuStyle(.borderlessButton).fixedSize().accessibilityLabel("Dateien an Chat anhängen").disabled(isGenerating || importing)
+                    } label: { Text("Aus Projekt") }.menuStyle(.borderlessButton).fixedSize().accessibilityLabel("Projektdateien auswählen").disabled(isGenerating || importing)
                     if importing { ProgressView().controlSize(.small) }
+                    Spacer(minLength: 0)
                     if store.settings.runtime == .mlx {
                         ContextUsageIndicator(tokens: exactContextTokens ?? estimatedContextTokens,
                                               isEstimated: exactContextTokens == nil)
@@ -176,6 +223,8 @@ struct AssistantPanel: View {
                             .help("Das Kontextlimit dieses lokalen Servers wird nicht gemeldet.")
                             .accessibilityLabel("Kontextauslastung nicht verfügbar")
                     }
+                }.buttonStyle(.borderless).font(.system(size: 11))
+                HStack(spacing: 8) {
                     Menu {
                         ForEach(library.installedCatalog) { model in
                             Button(model.title) {
@@ -185,17 +234,19 @@ struct AssistantPanel: View {
                         Divider()
                         Button("Modelle verwalten …") { showingModels = true }
                     } label: {
-                        HStack(spacing: 4) { Text(modelTitle).lineLimit(1); Image(systemName: "chevron.down").font(.system(size: 8)) }
-                    }.menuStyle(.borderlessButton).disabled(isGenerating).font(.system(size: 10)).foregroundStyle(.secondary)
-                        .accessibilityLabel("Chat-Modell")
+                        HStack(spacing: 4) { Text("KI: \(modelTitle)").lineLimit(1); Image(systemName: "chevron.down").font(.system(size: 8)) }
+                    }.menuStyle(.borderlessButton).disabled(isGenerating).font(.system(size: 11)).foregroundStyle(.secondary)
+                        .accessibilityLabel("KI auswählen")
                     Spacer(minLength: 0)
                     if isGenerating {
-                        Button { generationTask?.cancel() } label: { Image(systemName: "stop.fill").frame(width: 24, height: 24) }
+                        Button { generationTask?.cancel() } label: { Label("Stoppen", systemImage: "stop.fill") }
+                            .buttonStyle(.bordered).controlSize(.small)
                             .help("Antwort abbrechen").accessibilityLabel("Antwort abbrechen")
                     } else {
-                        Button { send() } label: { Image(systemName: "arrow.up").font(.system(size: 12, weight: .semibold)).frame(width: 24, height: 24) }
+                        Button { send() } label: { Label("Senden", systemImage: "arrow.up") }
+                            .buttonStyle(.borderedProminent).controlSize(.small)
                             .keyboardShortcut(.return, modifiers: .command).help("Enter senden · Umschalt Enter neue Zeile").accessibilityLabel("Nachricht senden")
-                            .disabled(importing || library.isBusy || question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            .disabled(importing || library.isBusy || missingSource || question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }.buttonStyle(.borderless)
             }
@@ -237,7 +288,11 @@ struct AssistantPanel: View {
                 if message.text.isEmpty && isGenerating { ProgressView().controlSize(.small).accessibilityLabel("Antwort wird vorbereitet") }
                 else if !message.text.isEmpty { Text(message.text).font(.system(size: 13)).lineSpacing(4).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
                 if message.contextTrimmed == true {
-                    Label("Der Modellkontext wurde für diese Anfrage begrenzt. Ältere Chatbeiträge oder Quellenauszüge können fehlen; der vollständige Chat und die Projektdateien bleiben gespeichert.", systemImage: "arrow.down.right.and.arrow.up.left")
+                    Label("Für diese Antwort waren nicht alle bisherigen Nachrichten oder Dateiauszüge verfügbar. Deine Dateien und der Chat bleiben erhalten.", systemImage: "arrow.down.right.and.arrow.up.left")
+                        .font(.system(size: 10)).foregroundStyle(.secondary)
+                }
+                if message.sourcesIncomplete == true {
+                    Label("Nur Teile der ausgewählten Dateien wurden berücksichtigt. Die Antwort kann Inhalte auslassen.", systemImage: "exclamationmark.triangle")
                         .font(.system(size: 10)).foregroundStyle(.secondary)
                 }
                 if !isGenerating {
@@ -246,22 +301,25 @@ struct AssistantPanel: View {
                     }
                     if !message.text.isEmpty {
                         HStack(spacing: 12) {
-                            Button("Kopieren") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(message.text, forType: .string) }
                             if project.allFiles.first(where: { $0.id == (activeFileID ?? project.id) })?.kind == .document {
-                                Button("Vorschau & Einfügen") {
+                                Button("Einfügen") {
                                     let id = activeFileID ?? project.id
                                     guard let file = project.allFiles.first(where: { $0.id == id }) else { return }
-                                    insertionDraft = DocumentInsertionDraft(fileID: id, fileName: file.name, text: message.text, sources: message.sources ?? [])
+                                    insertionDraft = DocumentInsertionDraft(fileID: id, fileName: file.name, text: message.text, sources: message.sources ?? [], sourcesIncomplete: message.sourcesIncomplete == true)
                                 }
                                     .disabled(message.status != .complete).help("Text vor dem Einfügen am Dokumentende prüfen")
                             }
+                            Button("Neues Dokument") {
+                                insertionDraft = DocumentInsertionDraft(fileID: nil, fileName: "KI-Entwurf", text: message.text, sources: message.sources ?? [], sourcesIncomplete: message.sourcesIncomplete == true)
+                            }.buttonStyle(.bordered).controlSize(.small).disabled(message.status != .complete).help("Antwort prüfen und als neues Dokument anlegen")
                             Menu("Mehr") {
+                                Button("Kopieren") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(message.text, forType: .string) }
                                 Button("Bearbeiten") { editingMessageID = message.id }
                                 Button("Als Projektnotiz merken") { memoryDraft = String(message.text.prefix(1_000)) }
                                 Button("Als Vorlage speichern") { prepareTemplate(from: message) }
                                     .disabled(message.status != .complete)
                             }.menuStyle(.borderlessButton).fixedSize()
-                        }.buttonStyle(.plain).font(.system(size: 10)).foregroundStyle(.secondary)
+                        }.buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(.secondary)
                     }
                 }
                 if let sources = message.sources, !sources.isEmpty {
@@ -282,6 +340,16 @@ struct AssistantPanel: View {
         }
     }
     private func persist() { project.chatMessages = messages }
+    private var missingGuidedSource: Bool {
+        guard question == AssistantTasks.summary || question == AssistantTasks.report else { return false }
+        let selected = attachments.intersection(Set(project.allFiles.map(\.id)))
+        return ProjectKnowledge.sources(project: project, question: question, includeProject: includeDocument, attachments: selected).isEmpty
+    }
+    private var draftCoverage: ProjectKnowledge.Coverage {
+        let selected = attachments.intersection(Set(project.allFiles.map(\.id)))
+        let sources = ProjectKnowledge.sources(project: project, question: question, includeProject: includeDocument, attachments: selected)
+        return ProjectKnowledge.coverage(project: project, includeProject: includeDocument, attachments: selected, sources: sources)
+    }
     private var estimatedContextTokens: Int {
         let selected = attachments.intersection(Set(project.allFiles.map(\.id)))
         let sources = ProjectKnowledge.sources(project: project, question: question, includeProject: includeDocument, attachments: selected)
@@ -294,7 +362,7 @@ struct AssistantPanel: View {
         project.allFiles.contains { $0.kind == .table && (includeDocument || attachments.contains($0.id)) }
     }
     private func send() {
-        guard !isGenerating, !library.isBusy, !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        guard !isGenerating, !library.isBusy, !missingGuidedSource, !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         exactContextTokens = nil
         generationTask = Task { await generate() }
     }
@@ -311,9 +379,11 @@ struct AssistantPanel: View {
         let sources = ProjectKnowledge.sources(project: project, question: clean, includeProject: includeDocument, attachments: selected)
         let instructions = chatInstructions(sources: sources, request: clean, includeTableCaution: hasTableContext)
         messages.append(.init(role: .user, text: clean, attachmentIDs: Array(selected)))
-        let response = WorkspaceMessage(role: .assistant, text: "", status: .incomplete, sources: sources, contextTrimmed: historyTrimmed ? true : nil)
+        let coverage = ProjectKnowledge.coverage(project: project, includeProject: includeDocument, attachments: selected, sources: sources)
+        let response = WorkspaceMessage(role: .assistant, text: "", status: .incomplete, sources: sources, contextTrimmed: historyTrimmed ? true : nil, sourcesIncomplete: coverage.isIncomplete ? true : nil)
         messages.append(response); persist()
-        question = ""; attachments = []; errorMessage = nil; isGenerating = true
+        // Keep the selected files for follow-up questions until the user removes them.
+        question = ""; errorMessage = nil; isGenerating = true
         defer { isGenerating = false; generationTask = nil; persist() }
         do {
             let result: String
@@ -329,6 +399,7 @@ struct AssistantPanel: View {
                     let shorterInstructions = chatInstructions(sources: shorterSources, request: clean, includeTableCaution: hasTableContext)
                     messages[index].sources = shorterSources
                     messages[index].contextTrimmed = true
+                    messages[index].sourcesIncomplete = ProjectKnowledge.coverage(project: project, includeProject: includeDocument, attachments: selected, sources: shorterSources).isIncomplete ? true : nil
                     result = try await generateLocally(instructions: shorterInstructions, userText: clean, history: shorterHistory, responseID: response.id)
                 }
             } else {
@@ -395,29 +466,33 @@ struct AssistantPanel: View {
 
 private struct DocumentInsertionDraft: Identifiable {
     let id = UUID()
-    let fileID: UUID
+    let fileID: UUID?
     let fileName: String
     let text: String
     let sources: [WorkspaceSource]
+    let sourcesIncomplete: Bool
 }
 
 private struct DocumentInsertionSheet: View {
     let draft: DocumentInsertionDraft
-    let onInsert: (String) -> Void
+    let onInsert: (String, String) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var text: String
+    @State private var name: String
 
-    init(draft: DocumentInsertionDraft, onInsert: @escaping (String) -> Void) {
+    init(draft: DocumentInsertionDraft, onInsert: @escaping (String, String) -> Void) {
         self.draft = draft
         self.onInsert = onInsert
         _text = State(initialValue: draft.text)
+        _name = State(initialValue: draft.fileName)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Text vor dem Einfügen prüfen").font(.title2)
-            Text("Der Text wird am Ende von „\(draft.fileName)“ eingefügt. Du kannst ihn hier bearbeiten.")
+            Text(draft.fileID == nil ? "Neues Dokument prüfen" : "Text vor dem Einfügen prüfen").font(.title2)
+            Text(draft.fileID == nil ? "Prüfe und bearbeite den Entwurf, bevor du das Dokument anlegst." : "Der Text wird am Ende von „\(draft.fileName)“ eingefügt. Du kannst ihn hier bearbeiten.")
                 .foregroundStyle(.secondary)
+            if draft.fileID == nil { TextField("Dokumentname", text: $name).textFieldStyle(.roundedBorder) }
             TextEditor(text: $text).font(.body).scrollContentBackground(.hidden).padding(8)
                 .background(WorkspacePalette.paper, in: RoundedRectangle(cornerRadius: 8))
             if draft.sources.isEmpty {
@@ -437,12 +512,16 @@ private struct DocumentInsertionSheet: View {
                     }.frame(maxHeight: 130).background(WorkspacePalette.paper, in: RoundedRectangle(cornerRadius: 8))
                 }.font(.callout)
             }
+            if draft.sourcesIncomplete {
+                Label("Die Antwort beruht nur auf Teilen der ausgewählten Dateien. Bitte prüfe die vollständigen Originale.", systemImage: "exclamationmark.triangle")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             HStack {
                 Button("Abbrechen") { dismiss() }
                 Spacer()
-                Button("Ins Dokument einfügen") { onInsert(text); dismiss() }
+                Button(draft.fileID == nil ? "Dokument anlegen" : "Ins Dokument einfügen") { onInsert(text, name.trimmingCharacters(in: .whitespacesAndNewlines)); dismiss() }
                     .buttonStyle(.borderedProminent)
-                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (draft.fileID == nil && name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
             }
         }.padding(24).frame(width: 640, height: 500).background(WorkspacePalette.canvas)
     }

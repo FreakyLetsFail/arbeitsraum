@@ -48,6 +48,7 @@ struct WorkspaceMessage: Codable, Identifiable, Hashable, Sendable {
     var attachmentIDs: [UUID]?
     var sources: [WorkspaceSource]?
     var contextTrimmed: Bool?
+    var sourcesIncomplete: Bool?
 }
 
 struct WorkspaceTemplate: Codable, Identifiable, Hashable {
@@ -144,6 +145,13 @@ struct WorkspaceSource: Codable, Identifiable, Hashable, Sendable {
 }
 
 extension WorkspaceProject {
+    @discardableResult
+    mutating func addDocument(name: String, text: String) -> UUID {
+        let file = WorkspaceFile(name: name, kind: .document, text: text)
+        files = (files ?? []) + [file]
+        return file.id
+    }
+
     var primaryName: String { primaryFileName ?? (kind == .document ? "Dokument" : "Tabellenblatt 1") }
     var allFiles: [WorkspaceFile] {
         [WorkspaceFile(id: id, name: primaryName, kind: kind == .document ? .document : .table,

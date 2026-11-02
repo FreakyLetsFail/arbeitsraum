@@ -412,7 +412,7 @@ struct WorkspaceEditor: View {
                     }.id(fileID)
                 }.frame(minWidth: 380, maxWidth: .infinity, maxHeight: .infinity).background(WorkspacePalette.canvas)
                 if showingChat {
-                    AssistantPanel(project: $project, store: store, activeFileID: fileID)
+                    AssistantPanel(project: $project, store: store, activeFileID: fileID, onOpenFile: { activeID = $0 })
                         .frame(minWidth: 300, idealWidth: 370, maxWidth: 540, maxHeight: .infinity)
                 }
             }
